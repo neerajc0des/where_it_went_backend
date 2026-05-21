@@ -1,0 +1,127 @@
+generator client {
+  provider = "prisma-client-js"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+
+model User {
+  id            String        @id @default(uuid())
+  email         String        @unique
+  password      String        // bcrypt hashed
+  name          String
+  refreshToken  String?       // for JWT refresh
+  createdAt     DateTime      @default(now())
+  updatedAt     DateTime      @updatedAt
+
+  accounts      Account[]
+  transactions  Transaction[]
+  moods         Mood[]
+  recaps        Recap[]
+  nudges        Nudge[]
+}
+
+model Account {
+  id              String        @id @default(uuid())
+  name            String        // "SBI Savings", "Cash", "GPay Wallet"
+  balance         Decimal       @default(0)
+  monthlyBudget   Decimal?        // optional spending limit
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
+
+  userId          String
+  user            User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  transactions    Transaction[]
+}
+
+model Transaction {
+  id            String      @id @default(uuid())
+  amount        Decimal     @default(0)
+  category      Category
+  merchant      String?     // AES encrypted
+  note          String?     // AES encrypted
+  date          DateTime    @default(now())
+  hourOfDay     Int         // 0-23
+  dayOfWeek     Int         // 0-6
+  isImpulse     Boolean     @default(false)
+  createdAt     DateTime    @default(now())
+
+  userId        String
+  user          User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  accountId     String
+  account       Account     @relation(fields: [accountId], references: [id], onDelete: Cascade)
+}
+
+model Mood {
+  id            String      @id @default(uuid())
+  mood          MoodType
+  note          String?
+  loggedAt      DateTime    @default(now())
+  hourOfDay     Int
+
+  userId        String
+  user          User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model Recap {
+  id                String      @id @default(uuid())
+  type              RecapType
+  periodLabel       String
+  totalSpent        Decimal     @default(0)
+  topCategory       Category
+  highestSpend      Decimal     @default(0)
+  lowestSpend       Decimal     @default(0)
+  netChange         Decimal     @default(0)
+  transactionCount  Int         @default(0)
+  personalityLabel  String?
+  moodCorrelation   String?
+  generatedAt       DateTime    @default(now())
+
+  userId            String
+  user              User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model Nudge {
+  id          String      @id @default(uuid())
+  message     String
+  type        NudgeType
+  isRead      Boolean     @default(false)
+  createdAt   DateTime    @default(now())
+
+  userId      String
+  user        User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+enum Category {
+  FOOD
+  TRANSPORT
+  ENTERTAINMENT
+  SHOPPING
+  HEALTH
+  UTILITIES
+  EDUCATION
+  OTHER
+}
+
+enum MoodType {
+  HAPPY
+  NEUTRAL
+  ANXIOUS
+  STRESSED
+  SAD
+}
+
+enum RecapType {
+  MONTHLY
+  YEARLY
+}
+
+enum NudgeType {
+  IMPULSE_PATTERN
+  MOOD_SPENDING
+  BALANCE_WARNING
+  PERSONALITY_INSIGHT
+}
