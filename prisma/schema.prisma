@@ -11,8 +11,11 @@ datasource db {
 model User {
   id            String        @id @default(uuid())
   email         String        @unique
-  password      String        // bcrypt hashed
+  password      String?        // bcrypt hashed
   name          String
+
+  googleId      String?       @unique
+  avatar        String?       // Google profile picture
   refreshToken  String?       // for JWT refresh
   createdAt     DateTime      @default(now())
   updatedAt     DateTime      @updatedAt
