@@ -1,6 +1,6 @@
-// import 'dotenv/config';
+import 'dotenv/config';
+// import prisma from './config/db';
 import app from './app';
-import prisma from './config/db';
 
 
 
