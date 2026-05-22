@@ -19,13 +19,25 @@ model User {
   refreshToken  String?       // for JWT refresh
   createdAt     DateTime      @default(now())
   updatedAt     DateTime      @updatedAt
-  isActive      Boolean @default(true)
+  isActive      Boolean       @default(true)
+  isEmailVerified   Boolean       @default(false)
 
   accounts      Account[]
   transactions  Transaction[]
   moods         Mood[]
   recaps        Recap[]
   nudges        Nudge[]
+  verificationTokens VerificationToken[]
+}
+
+model VerificationToken {
+  id        String   @id @default(uuid())
+  token     String   @unique
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 }
 
 model Account {

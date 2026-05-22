@@ -1,5 +1,5 @@
 import { Router } from "express";
-import { getMeController, loginController, logoutController, refreshTokenController, registerController } from "./auth.controller";
+import { getMeController, loginController, logoutController, refreshTokenController, registerController, verifyEmail } from "./auth.controller";
 import { loginSchema, registerSchema } from "./auth.schema";
 import { validate } from "../../middlewares/validate";
 import { authenticate } from "../../middlewares/authenticate";
@@ -7,6 +7,7 @@ import { authenticate } from "../../middlewares/authenticate";
 const router = Router();
 
 router.post('/register', validate(registerSchema), registerController);
+router.get("/verify_email", verifyEmail);
 router.post('/login', validate(loginSchema), loginController);
 router.post('/refresh', refreshTokenController);
 router.post('/logout', logoutController);

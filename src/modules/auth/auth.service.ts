@@ -1,7 +1,9 @@
 import bcrypt from "bcryptjs";
+import { randomBytes } from "crypto";
 import prisma from "../../config/db";
 import { RegisterInput } from "./auth.schema";
 import { generateAccessToken, generateRefreshToken, verifyRefreshToken } from "../../utils/jwt";
+import { sendVerificationEmail } from "../../utils/email";
 
 // Register Service
 export const registerService = async (
@@ -33,16 +35,26 @@ export const registerService = async (
 
     const accessToken = generateAccessToken(user.id);
     const refreshToken = generateRefreshToken(user.id);
+    const verifyToken = randomBytes(32).toString("hex");
 
     await prisma.user.update({
         where: { id: user.id },
         data: { refreshToken }
     });
 
+    await prisma.verificationToken.create({
+        data: {
+            token: verifyToken,
+            userId: user.id,
+            expiresAt: new Date(Date.now() + 1000 * 60 * 60 * 24), // 24 hours from now
+        },
+    });
+
+    sendVerificationEmail(user.email, verifyToken).catch(console.error);
+
     return {
-        id: user.id,
-        name: user.name,
-        email: user.email,
+        message: "Registration successful. Please check your email to verify your account.",
+        userId: user.id,
         accessToken,
         refreshToken,
     }
@@ -65,7 +77,16 @@ export const loginService = async (
         throw new Error('Invalid email or password');
     }
 
+    if (!existingUser.password) {
+        throw new Error('Invalid email or password');
+    }
+
+    if (!existingUser.isEmailVerified) {
+        throw new Error('Please verify your email before logging in');
+    }
+
     const isMatch = await bcrypt.compare(password, existingUser.password);
+    
 
     if (!isMatch) {
         throw new Error('Invalid email or password');
@@ -114,17 +135,38 @@ export const refreshTokenService = async (token:string) =>{
 }
 
 
-// Logout service
-// export const logoutService = async (userId: string) => {
-//   await prisma.user.update({
-//     where: { id: userId },
-//     data: { refreshToken: null }
-//   });
-// };
-
 export const logoutService = async (refreshToken: string) => {
   await prisma.user.updateMany({
     where: { refreshToken },
     data: { refreshToken: null }
   });
+};
+
+
+export const verifyEmailService = async (token: string) => {
+    const verificationRecord = await prisma.verificationToken.findUnique({
+        where: { token },
+        include: { user: true },
+    });
+
+    if (!verificationRecord) {
+        throw new Error('Invalid verification token');
+    }
+
+    if (verificationRecord.expiresAt < new Date()) {
+        throw new Error('Verification token has expired');
+    }
+
+    // Update user to verified and delete the used token in a single transaction
+    await prisma.$transaction([
+        prisma.user.update({
+            where: { id: verificationRecord.userId },
+            data: { isEmailVerified: true },
+        }),
+        prisma.verificationToken.delete({
+            where: { id: verificationRecord.id },
+        }),
+    ]);
+
+    return { message: "Email successfully verified. You can now log in." };
 };

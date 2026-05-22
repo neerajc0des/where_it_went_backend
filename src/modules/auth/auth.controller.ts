@@ -1,5 +1,5 @@
 import { Request, Response } from "express";
-import { loginService, logoutService, refreshTokenService, registerService } from "./auth.service";
+import { loginService, logoutService, refreshTokenService, registerService, verifyEmailService } from "./auth.service";
 import prisma from "../../config/db";
 
 export const registerController = async (req: Request, res: Response) => {
@@ -28,6 +28,26 @@ export const loginController = async (req: Request, res: Response) => {
         });
     }
 }
+
+// email verification
+export const verifyEmail = async (req: Request, res: Response) => {
+  try {
+    // We expect the token to come from the URL query: /verify-email?token=xyz
+    const { token } = req.query;
+
+    if (!token || typeof token !== "string") {
+      return res.status(400).json({ error: "Verification token is required" });
+    }
+
+    const result = await verifyEmailService(token);
+    res.status(200).json({
+         success: true,
+        result,
+    });
+  } catch (error: any) {
+    res.status(400).json({ success: false, error: error.message });
+  }
+};
 
 export const refreshTokenController = async (req: Request, res: Response) => {
     try {
