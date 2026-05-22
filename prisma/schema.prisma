@@ -16,6 +16,7 @@ model User {
   refreshToken  String?       // for JWT refresh
   createdAt     DateTime      @default(now())
   updatedAt     DateTime      @updatedAt
+  isActive      Boolean @default(true)
 
   accounts      Account[]
   transactions  Transaction[]
@@ -31,6 +32,7 @@ model Account {
   monthlyBudget   Decimal?        // optional spending limit
   createdAt       DateTime      @default(now())
   updatedAt       DateTime      @updatedAt
+  isArchived      Boolean       @default(false)
 
   userId          String
   user            User          @relation(fields: [userId], references: [id], onDelete: Cascade)
@@ -52,7 +54,7 @@ model Transaction {
   userId        String
   user          User        @relation(fields: [userId], references: [id], onDelete: Cascade)
   accountId     String
-  account       Account     @relation(fields: [accountId], references: [id], onDelete: Cascade)
+  account       Account     @relation(fields: [accountId], references: [id])
 }
 
 model Mood {
