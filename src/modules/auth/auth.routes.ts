@@ -1,7 +1,7 @@
 import 'dotenv/config';
 
 import { Request, Response, Router } from "express";
-import { getMeController, loginController, logoutController, refreshTokenController, registerController, verifyEmail } from "./auth.controller";
+import { getMeController, getSessionsController, loginController, logoutController, refreshTokenController, registerController, revokeAllSessionsController, revokeSessionController, verifyEmail } from "./auth.controller";
 import { loginSchema, registerSchema } from "./auth.schema";
 import { validate } from "../../middlewares/validate";
 import { authenticate } from "../../middlewares/authenticate";
@@ -14,6 +14,10 @@ router.get("/verify_email", verifyEmail);
 router.post('/login', validate(loginSchema), loginController);
 router.post('/refresh', refreshTokenController);
 router.post('/logout', logoutController);
+
+router.get('/sessions', authenticate, getSessionsController);
+router.delete('/sessions/:id', authenticate, revokeSessionController);
+router.delete('/delete_essions', authenticate, revokeAllSessionsController);
 
 // testing authenticate middleware
 router.get('/me', authenticate, getMeController);

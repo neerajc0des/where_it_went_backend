@@ -16,18 +16,33 @@ model User {
 
   googleId      String?       @unique
   avatar        String?       // Google profile picture/custom avatar URL
-  refreshToken  String?       // for JWT refresh
+  // refreshToken  String?       // for JWT refresh
+
+  sessions        Session[]   // for JWT refresh tokens, if we want to support multiple devices/sessions
   createdAt     DateTime      @default(now())
   updatedAt     DateTime      @updatedAt
   isActive      Boolean       @default(true)
   isEmailVerified   Boolean       @default(false)
 
   accounts      Account[]
-  transactions  Transaction[]
   moods         Mood[]
   recaps        Recap[]
   nudges        Nudge[]
   verificationTokens VerificationToken[]
+}
+
+model Session {
+  id            String    @id @default(uuid())
+  refreshToken  String    @unique  
+  deviceName    String?
+  ipAddress     String?   // AES encrypt this — it's PII
+  userAgent     String?
+  expiresAt     DateTime
+  isRevoked     Boolean   @default(false) 
+  createdAt     DateTime  @default(now())
+
+  userId        String
+  user          User      @relation(fields: [userId], references: [id], onDelete: Cascade)
 }
 
 model VerificationToken {
@@ -43,6 +58,7 @@ model VerificationToken {
 model Account {
   id              String        @id @default(uuid())
   name            String        // "SBI Savings", "Cash", "GPay Wallet"
+  type            AccountType
   balance         Decimal       @default(0)
   monthlyBudget   Decimal?        // optional spending limit
   createdAt       DateTime      @default(now())
@@ -51,25 +67,23 @@ model Account {
 
   userId          String
   user            User          @relation(fields: [userId], references: [id], onDelete: Cascade)
-  transactions    Transaction[]
+  transactions    Transaction[] 
 }
 
 model Transaction {
   id            String      @id @default(uuid())
-  amount        Decimal     @default(0)
-  category      Category
-  merchant      String?     // AES encrypted
-  note          String?     // AES encrypted
+  amount        Decimal
+  category      TransactionCategory
+  merchant      String?
+  note          String?
   date          DateTime    @default(now())
-  hourOfDay     Int         // 0-23
-  dayOfWeek     Int         // 0-6
+  hourOfDay     Int
+  dayOfWeek     Int
   isImpulse     Boolean     @default(false)
   createdAt     DateTime    @default(now())
 
-  userId        String
-  user          User        @relation(fields: [userId], references: [id], onDelete: Cascade)
   accountId     String
-  account       Account     @relation(fields: [accountId], references: [id])
+  account       Account     @relation(fields: [accountId], references: [id], onDelete: Cascade)
 }
 
 model Mood {
@@ -86,15 +100,18 @@ model Mood {
 model Recap {
   id                String      @id @default(uuid())
   type              RecapType
-  periodLabel       String
+  periodLabel       String          // "January 2025", "2025"
+  startDate         DateTime        // period start
+  endDate           DateTime        // period end
   totalSpent        Decimal     @default(0)
-  topCategory       Category
+  totalIncome       Decimal     @default(0)  // future proofing for income tracking
+  netChange         Decimal     @default(0)  // income - expenses
+  topCategory       TransactionCategory
   highestSpend      Decimal     @default(0)
   lowestSpend       Decimal     @default(0)
-  netChange         Decimal     @default(0)
   transactionCount  Int         @default(0)
   personalityLabel  String?
-  moodCorrelation   String?
+  moodCorrelation   String?                     // "Spent 40% more when stressed"
   generatedAt       DateTime    @default(now())
 
   userId            String
@@ -112,7 +129,17 @@ model Nudge {
   user        User        @relation(fields: [userId], references: [id], onDelete: Cascade)
 }
 
-enum Category {
+
+enum AccountType {
+  BANK
+  CASH
+  WALLET
+  CREDIT_CARD
+  SAVINGS
+  UPI
+}
+
+enum TransactionCategory {
   FOOD
   TRANSPORT
   ENTERTAINMENT

@@ -3,6 +3,7 @@ import passport from 'passport';
 import { Strategy as GoogleStrategy } from 'passport-google-oauth20';
 import prisma from './db';
 import { generateAccessToken, generateRefreshToken } from '../utils/jwt';
+import { UAParser } from 'ua-parser-js';
 
 passport.use(
   new GoogleStrategy(
@@ -10,8 +11,9 @@ passport.use(
       clientID: process.env.GOOGLE_CLIENT_ID!,
       clientSecret: process.env.GOOGLE_CLIENT_SECRET!,
       callbackURL: process.env.GOOGLE_CALLBACK_URL!,
+      passReqToCallback: true, 
     },
-    async (_accessToken, _refreshToken, profile, done) => {
+    async (req, _accessToken, _refreshToken, profile, done) => {
       try {
         const email = profile.emails?.[0].value;
         const avatar = profile.photos?.[0].value;
@@ -48,10 +50,24 @@ passport.use(
         const appAccessToken = generateAccessToken(user.id);
         const appRefreshToken = generateRefreshToken(user.id);
 
-        await prisma.user.update({
-          where: { id: user.id },
-          data: { refreshToken: appRefreshToken }
+        const parser = new UAParser(req.headers?.['user-agent']);
+        const browser = parser.getBrowser().name ?? 'Unknown';
+        const os = parser.getOS().name ?? 'Unknown';
+
+        await prisma.session.create({
+          data: {
+            refreshToken: appRefreshToken,
+            userId: user.id,
+            deviceName: `${browser} on ${os}`,
+            userAgent: req.headers?.['user-agent'],
+            expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
+          }
         });
+
+        // await prisma.session.update({
+        //   where: { id: user.id },
+        //   data: { refreshToken: appRefreshToken }
+        // });
 
         // pass tokens via user object to callback
         return done(null, { 

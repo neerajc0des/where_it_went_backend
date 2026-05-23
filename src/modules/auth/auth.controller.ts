@@ -4,7 +4,10 @@ import prisma from "../../config/db";
 
 export const registerController = async (req: Request, res: Response) => {
     try {
-        const result = await registerService(req.body);
+        const result = await registerService(req.body, {
+            ipAddress: req.ip,
+            userAgent: req.headers['user-agent'],
+        });
         return res.status(201).json({ 
             success: true, data: result 
         });
@@ -18,7 +21,10 @@ export const registerController = async (req: Request, res: Response) => {
 
 export const loginController = async (req: Request, res: Response) => {
     try {
-        const result = await loginService(req.body.email, req.body.password);
+        const result = await loginService(req.body.email, req.body.password, {
+            ipAddress: req.ip,
+            userAgent: req.headers['user-agent'],
+        });
         return res.status(200).json({ 
             success: true, data: result 
         });
@@ -107,4 +113,49 @@ export const getMeController = async (req: Request, res: Response) => {
             message: error.message 
         });
     }
+};
+
+// session controllers
+export const getSessionsController = async (req: Request, res: Response) => {
+  try {
+    const sessions = await prisma.session.findMany({
+      where: { 
+        userId: req.userId, 
+        isRevoked: false, 
+        expiresAt: { gt: new Date() } 
+      },
+      select: { 
+        id: true, deviceName: true, 
+        ipAddress: true, 
+        createdAt: true, expiresAt: true 
+      }
+    });
+    return res.status(200).json({ success: true, data: sessions });
+  } catch (error: any) {
+    return res.status(400).json({ success: false, message: error.message });
+  }
+};
+
+export const revokeSessionController = async (req: Request, res: Response) => {
+  try {
+    await prisma.session.updateMany({
+      where: { id: req.params.id as string, userId: req.userId },
+      data: { isRevoked: true }
+    });
+    return res.status(200).json({ success: true, message: 'Session revoked' });
+  } catch (error: any) {
+    return res.status(400).json({ success: false, message: error.message });
+  }
+};
+
+export const revokeAllSessionsController = async (req: Request, res: Response) => {
+  try {
+    await prisma.session.updateMany({
+      where: { userId: req.userId },
+      data: { isRevoked: true }
+    });
+    return res.status(200).json({ success: true, message: 'All sessions revoked' });
+  } catch (error: any) {
+    return res.status(400).json({ success: false, message: error.message });
+  }
 };

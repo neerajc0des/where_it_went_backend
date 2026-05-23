@@ -4,10 +4,17 @@ import prisma from "../../config/db";
 import { RegisterInput } from "./auth.schema";
 import { generateAccessToken, generateRefreshToken, verifyRefreshToken } from "../../utils/jwt";
 import { sendVerificationEmail } from "../../utils/email";
+import { UAParser } from "ua-parser-js";
+
+interface DeviceInfo {
+  ipAddress?: string;
+  userAgent?: string;
+}
 
 // Register Service
 export const registerService = async (
-    payload: RegisterInput
+    payload: RegisterInput,
+    deviceInfo: DeviceInfo  
 ) => {
     const {name, email, password} = payload;
 
@@ -37,17 +44,43 @@ export const registerService = async (
     const refreshToken = generateRefreshToken(user.id);
     const verifyToken = randomBytes(32).toString("hex");
 
-    await prisma.user.update({
-        where: { id: user.id },
-        data: { refreshToken }
+    // parsing device details
+    const parser = new UAParser(deviceInfo.userAgent);
+    const browser = parser.getBrowser().name ?? 'Unknown browser';
+    const os = parser.getOS().name ?? 'Unknown OS';
+    const deviceName = `${browser} on ${os}`;
+
+    // await prisma.user.update({
+    //     where: { id: user.id },
+    //     data: { refreshToken }
+    // });
+
+
+    // await prisma.verificationToken.create({
+    //     data: {
+    //         token: verifyToken,
+    //         userId: user.id,
+    //         expiresAt: new Date(Date.now() + 1000 * 60 * 60 * 24), // 24 hours from now
+    //     },
+    // });
+
+    await prisma.session.create({
+        data: {
+            refreshToken,
+            userId: user.id,
+            deviceName,
+            ipAddress: deviceInfo.ipAddress,
+            userAgent: deviceInfo.userAgent,
+            expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),  // 7 days from now
+        }
     });
 
     await prisma.verificationToken.create({
         data: {
             token: verifyToken,
             userId: user.id,
-            expiresAt: new Date(Date.now() + 1000 * 60 * 60 * 24), // 24 hours from now
-        },
+            expiresAt: new Date(Date.now() + 1000 * 60 * 60 * 24),
+        }
     });
 
     sendVerificationEmail(user.email, verifyToken).catch(console.error);
@@ -64,7 +97,8 @@ export const registerService = async (
 // login service
 export const loginService = async (
     email: string,
-    password: string
+    password: string,
+    deviceInfo: DeviceInfo  
 ) => {
         //checking if user already exists
     const existingUser = await prisma.user.findUnique({
@@ -96,9 +130,26 @@ export const loginService = async (
     const refreshToken = generateRefreshToken(existingUser.id);
 
     // update refresh token in db
-    await prisma.user.update({
-        where: { id: existingUser.id },
-        data: { refreshToken }
+    // await prisma.user.update({
+    //     where: { id: existingUser.id },
+    //     data: { refreshToken }
+    // });
+
+    // parsing device details
+    const parser = new UAParser(deviceInfo.userAgent);
+    const browser = parser.getBrowser().name ?? 'Unknown browser';
+    const os = parser.getOS().name ?? 'Unknown OS';
+    const deviceName = `${browser} on ${os}`;
+
+    await prisma.session.create({
+        data: {
+            refreshToken,
+            userId: existingUser.id,
+            deviceName,
+            ipAddress: deviceInfo.ipAddress,
+            userAgent: deviceInfo.userAgent,
+            expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
+        }
     });
 
     return {
@@ -114,19 +165,40 @@ export const loginService = async (
 export const refreshTokenService = async (token:string) =>{
     const payload = verifyRefreshToken(token);
 
-    const user = await prisma.user.findUnique({ where: { id: payload.userId } });
+    // const user = await prisma.user.findUnique({ where: { id: payload.userId } });
 
-    if (!user || user.refreshToken !== token) {
-        throw new Error('Invalid refresh token');
+    // if (!user || user.refreshToken !== token) {
+    //     throw new Error('Invalid refresh token');
+    // }   
+
+    const session = await prisma.session.findUnique({
+        where: { refreshToken: token }
+    });
+
+    if (!session || session.isRevoked || session.expiresAt < new Date()) {
+        throw new Error('Invalid or expired session');
     }
 
-    const newAccessToken = generateAccessToken(user.id);
-    const newRefreshToken = generateRefreshToken(user.id);
+    // const newAccessToken = generateAccessToken(user.id);
+    // const newRefreshToken = generateRefreshToken(user.id);
+    const newAccessToken = generateAccessToken(payload.userId);
+    const newRefreshToken = generateRefreshToken(payload.userId);
 
-    await prisma.user.update({
-        where: { id: user.id },
-        data: { refreshToken: newRefreshToken }
+    await prisma.session.update({
+        where: { id: session.id },
+        data: { isRevoked: true  }
     });   
+
+    await prisma.session.create({
+        data: {
+            refreshToken: newRefreshToken,
+            userId: payload.userId,
+            deviceName: session.deviceName,
+            ipAddress: session.ipAddress,
+            userAgent: session.userAgent,
+            expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
+        }
+    });
 
     return {
         accessToken: newAccessToken,
@@ -136,9 +208,9 @@ export const refreshTokenService = async (token:string) =>{
 
 
 export const logoutService = async (refreshToken: string) => {
-  await prisma.user.updateMany({
+  await prisma.session.updateMany({
     where: { refreshToken },
-    data: { refreshToken: null }
+    data: { isRevoked: true }
   });
 };
 
