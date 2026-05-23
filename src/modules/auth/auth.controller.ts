@@ -52,11 +52,14 @@ export const verifyEmail = async (req: Request, res: Response) => {
 export const refreshTokenController = async (req: Request, res: Response) => {
     try {
         const { refreshToken } = req.body;
+
         if (!refreshToken) return res.status(400).json({ 
             success: false, 
             message: 'Refresh token required' 
         });
+
         const tokens = await refreshTokenService(refreshToken);
+        
         return res.status(200).json({ 
             success: true, 
             data: tokens 

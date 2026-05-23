@@ -27,7 +27,6 @@ router.get('/google',
   })
 );
 
-
 router.get('/google/redirect',
   passport.authenticate('google', { 
     session: false, 

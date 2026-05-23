@@ -15,7 +15,7 @@ model User {
   name          String
 
   googleId      String?       @unique
-  avatar        String?       // Google profile picture
+  avatar        String?       // Google profile picture/custom avatar URL
   refreshToken  String?       // for JWT refresh
   createdAt     DateTime      @default(now())
   updatedAt     DateTime      @updatedAt
