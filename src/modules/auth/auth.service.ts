@@ -141,6 +141,29 @@ export const loginService = async (
     const os = parser.getOS().name ?? 'Unknown OS';
     const deviceName = `${browser} on ${os}`;
 
+    // limiting sessions to 4 active sessions
+    const activeSessions = await prisma.session.count({
+        where: {
+            userId: existingUser.id,
+            isRevoked: false,
+            expiresAt: { gt: new Date() }
+        }
+    });
+
+    if (activeSessions >= 4) {
+        // revoke the oldest session to make room
+        const oldest = await prisma.session.findFirst({
+            where: { userId: existingUser.id, isRevoked: false },
+            orderBy: { createdAt: 'asc' }
+        });
+        if (oldest) {
+            await prisma.session.update({
+            where: { id: oldest.id },
+            data: { isRevoked: true }
+            });
+        }
+    }
+
     await prisma.session.create({
         data: {
             refreshToken,
