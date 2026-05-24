@@ -75,7 +75,11 @@ model Account {
 model Transaction {
   id            String      @id @default(uuid())
   amount        Decimal
-  category      TransactionCategory
+  type          TransactionType @default(EXPENSE)
+
+  categoryId    String              // FK to TransactionCategory
+  category      TransactionCategory @relation(fields: [categoryId], references: [id], onDelete: Cascade)
+
   merchant      String?
   note          String?
   date          DateTime    @default(now())
@@ -86,6 +90,21 @@ model Transaction {
 
   accountId     String
   account       Account     @relation(fields: [accountId], references: [id], onDelete: Cascade)
+}
+
+model TransactionCategory {
+  id          String          @id @default(uuid())
+  name        String
+  icon        String?         
+  type        TransactionType
+  isDefault   Boolean         @default(false)
+  createdAt   DateTime        @default(now())
+
+  userId      String?         // null = default, set = custom
+
+  transactions Transaction[]
+
+  @@unique([name, userId])
 }
 
 model Mood {
@@ -108,7 +127,7 @@ model Recap {
   totalSpent        Decimal     @default(0)
   totalIncome       Decimal     @default(0)  // future proofing for income tracking
   netChange         Decimal     @default(0)  // income - expenses
-  topCategory       TransactionCategory
+  topCategory       String   
   highestSpend      Decimal     @default(0)
   lowestSpend       Decimal     @default(0)
   transactionCount  Int         @default(0)
@@ -142,15 +161,9 @@ enum AccountType {
   UPI
 }
 
-enum TransactionCategory {
-  FOOD
-  TRANSPORT
-  ENTERTAINMENT
-  SHOPPING
-  HEALTH
-  UTILITIES
-  EDUCATION
-  OTHER
+enum TransactionType {
+  EXPENSE
+  INCOME
 }
 
 enum TokenType {
