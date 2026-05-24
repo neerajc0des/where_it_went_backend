@@ -10,18 +10,18 @@ import passport from "../../config/passport";
 const router = Router();
 
 router.post('/register', validate(registerSchema), registerController);
-router.get("/verify_email", verifyEmail);
-router.post('/resend_verification', validate(resendVerificationSchema), resendVerificationController);
+router.get("/verify-email", verifyEmail);
+router.post('/resend-verification', validate(resendVerificationSchema), resendVerificationController);
 router.post('/login', validate(loginSchema), loginController);
 router.post('/refresh', refreshTokenController);
 router.post('/logout', logoutController);
-router.post('/forgot_password', validate(forgotPasswordSchema), forgotPasswordController);
-router.post('/reset_password', validate(resetPasswordSchema), resetPasswordController);
+router.post('/forgot-password', validate(forgotPasswordSchema), forgotPasswordController);
+router.post('/reset-password', validate(resetPasswordSchema), resetPasswordController);
 
 
 router.get('/sessions', authenticate, getSessionsController);
-router.delete('/sessions/:id', authenticate, revokeSessionController);
-router.delete('/delete_essions', authenticate, revokeAllSessionsController);
+router.delete('/delete-session/:id', authenticate, revokeSessionController);
+router.delete('/delete-sessions', authenticate, revokeAllSessionsController);
 
 // testing authenticate middleware
 router.get('/me', authenticate, getMeController);
