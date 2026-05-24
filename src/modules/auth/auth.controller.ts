@@ -1,5 +1,5 @@
 import { Request, Response } from "express";
-import { loginService, logoutService, refreshTokenService, registerService, verifyEmailService } from "./auth.service";
+import { forgotPasswordService, loginService, logoutService, refreshTokenService, registerService, resendVerificationEmailService, resetPasswordService, verifyEmailService } from "./auth.service";
 import prisma from "../../config/db";
 
 export const registerController = async (req: Request, res: Response) => {
@@ -159,3 +159,38 @@ export const revokeAllSessionsController = async (req: Request, res: Response) =
     return res.status(400).json({ success: false, message: error.message });
   }
 };
+
+export const resendVerificationController = async (req: Request, res: Response) => {
+  try {
+    const result = await resendVerificationEmailService(req.body.email);
+    return res.status(200).json({ success: true, data: result });
+  } catch (error: any) {
+    return res.status(400).json({ success: false, message: error.message });
+  }
+};
+
+
+export const forgotPasswordController = async (req:Request, res:Response)=>{
+  try {
+    const result = await forgotPasswordService(req.body.email);
+    return res.status(200).json({ success: true, data: result });
+  } catch (error: any) {
+    return res.status(400).json({ success: false, message: error.message });
+  }
+}
+
+export const resetPasswordController = async (req:Request, res:Response)=>{
+  try {
+    const { token, password } = req.body;
+    const result = await resetPasswordService(token, password);
+    return res.status(200).json(
+      { 
+        success: true, 
+        data: result 
+      }
+      );
+
+  } catch (error: any) {
+    return res.status(400).json({ success: false, message: error.message });
+  }
+}

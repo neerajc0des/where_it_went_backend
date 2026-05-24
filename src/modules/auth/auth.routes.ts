@@ -1,8 +1,8 @@
 import 'dotenv/config';
 
 import { Request, Response, Router } from "express";
-import { getMeController, getSessionsController, loginController, logoutController, refreshTokenController, registerController, revokeAllSessionsController, revokeSessionController, verifyEmail } from "./auth.controller";
-import { loginSchema, registerSchema } from "./auth.schema";
+import { forgotPasswordController, getMeController, getSessionsController, loginController, logoutController, refreshTokenController, registerController, resendVerificationController, resetPasswordController, revokeAllSessionsController, revokeSessionController, verifyEmail } from "./auth.controller";
+import { forgotPasswordSchema, loginSchema, registerSchema, resendVerificationSchema, resetPasswordSchema } from "./auth.schema";
 import { validate } from "../../middlewares/validate";
 import { authenticate } from "../../middlewares/authenticate";
 import passport from "../../config/passport";
@@ -11,9 +11,13 @@ const router = Router();
 
 router.post('/register', validate(registerSchema), registerController);
 router.get("/verify_email", verifyEmail);
+router.post('/resend_verification', validate(resendVerificationSchema), resendVerificationController);
 router.post('/login', validate(loginSchema), loginController);
 router.post('/refresh', refreshTokenController);
 router.post('/logout', logoutController);
+router.post('/forgot_password', validate(forgotPasswordSchema), forgotPasswordController);
+router.post('/reset_password', validate(resetPasswordSchema), resetPasswordController);
+
 
 router.get('/sessions', authenticate, getSessionsController);
 router.delete('/sessions/:id', authenticate, revokeSessionController);

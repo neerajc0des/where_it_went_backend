@@ -48,6 +48,8 @@ model Session {
 model VerificationToken {
   id        String   @id @default(uuid())
   token     String   @unique
+  type      TokenType  // "EMAIL_VERIFICATION", "PASSWORD_RESET"
+  isUsed    Boolean   @default(false)
   expiresAt DateTime
   createdAt DateTime @default(now())
 
@@ -135,6 +137,7 @@ enum AccountType {
   CASH
   WALLET
   CREDIT_CARD
+  DEBIT_CARD
   SAVINGS
   UPI
 }
@@ -148,6 +151,11 @@ enum TransactionCategory {
   UTILITIES
   EDUCATION
   OTHER
+}
+
+enum TokenType {
+  EMAIL_VERIFICATION
+  PASSWORD_RESET
 }
 
 enum MoodType {
