@@ -4,7 +4,7 @@ import {
   getCategoriesByTypeService,
   createCategoryService,
   updateCategoryService,
-  getCategoryTransactionCountService,
+  // getCategoryTransactionCountService,
   deleteCategoryService,
 } from './categories.service';
 
@@ -63,17 +63,17 @@ export const updateCategoryController = async (req: Request, res: Response) => {
   }
 };
 
-export const getCategoryTransactionCountController = async (req: Request, res: Response) => {
-  try {
-    const result = await getCategoryTransactionCountService(
-      req.params.id as string,
-      req.userId
-    );
-    return res.status(200).json({ success: true, data: result });
-  } catch (error: any) {
-    return res.status(400).json({ success: false, message: error.message });
-  }
-};
+// export const getCategoryTransactionCountController = async (req: Request, res: Response) => {
+//   try {
+//     const result = await getCategoryTransactionCountService(
+//       req.params.id as string,
+//       req.userId
+//     );
+//     return res.status(200).json({ success: true, data: result });
+//   } catch (error: any) {
+//     return res.status(400).json({ success: false, message: error.message });
+//   }
+// };
 
 export const deleteCategoryController = async (req: Request, res: Response) => {
   try {

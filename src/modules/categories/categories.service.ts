@@ -72,6 +72,7 @@ export const createCategoryService = async (
   return category;
 };
 
+
 // update custom category
 export const updateCategoryService = async (
   categoryId: string,
@@ -101,26 +102,26 @@ export const updateCategoryService = async (
 };
 
 // get transaction count before delete — for warning
-export const getCategoryTransactionCountService = async (
-  categoryId: string,
-  userId: string
-) => {
-  const category = await prisma.transactionCategory.findFirst({
-    where: { id: categoryId, userId }
-  });
+// export const getCategoryTransactionCountService = async (
+//   categoryId: string,
+//   userId: string
+// ) => {
+//   const category = await prisma.transactionCategory.findFirst({
+//     where: { id: categoryId, userId }
+//   });
 
-  if (!category) throw new Error('Category not found');
-  if (category.isDefault) throw new Error('Cannot delete default categories');
+//   if (!category) throw new Error('Category not found');
+//   if (category.isDefault) throw new Error('Cannot delete default categories');
 
-  const count = await prisma.transaction.count({
-    where: {
-      categoryId,
-      account: { userId }
-    }
-  });
+//   const count = await prisma.transaction.count({
+//     where: {
+//       categoryId,
+//       account: { userId }
+//     }
+//   });
 
-  return { count, categoryName: category.name };
-};
+//   return { count, categoryName: category.name };
+// };
 
 // delete custom category
 export const deleteCategoryService = async (
