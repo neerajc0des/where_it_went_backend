@@ -2,7 +2,7 @@ import { Router } from 'express';
 import { authenticate } from '../../middlewares/authenticate';
 import { validate } from '../../middlewares/validate';
 import { createCategorySchema, updateCategorySchema } from './categories.schema';
-import { getCategoriesController, getCategoriesByTypeController, createCategoryController, updateCategoryController, getCategoryTransactionCountController, deleteCategoryController} from './categories.controller';
+import { getCategoriesController, getCategoriesByTypeController, createCategoryController, updateCategoryController, deleteCategoryController} from './categories.controller';
 
 const router = Router();
 

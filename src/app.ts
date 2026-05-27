@@ -20,8 +20,10 @@ app.use(express.json());
 
 app.use(passport.initialize());
 
-app.use('/api/v1/auth/', authRoutes);
-app.use('/api/v1/accounts/', accountRoutes);
+
+
+app.use('/api/v1/auth', authRoutes);
+app.use('/api/v1/accounts', accountRoutes);
 app.use('/api/v1/categories', categoryRoutes);
 app.use('/api/v1/transactions', transactionRoutes);
 

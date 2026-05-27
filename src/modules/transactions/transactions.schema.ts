@@ -7,8 +7,8 @@ export const createTransactionSchema = z.object({
   body: z.object({
     amount: z.number().positive('Amount must be greater than 0'),
     type: TransactionTypeEnum,
-    categoryId: z.uuid('Invalid category ID'),
-    accountId: z.uuid('Invalid account ID'),
+    categoryId: z.string().uuid('Invalid category ID'),
+    accountId: z.string().uuid('Invalid account ID'),
     merchant: z.string().max(100).optional(),
     note: z.string().max(255).optional(),
     date: dateSchema.optional(),

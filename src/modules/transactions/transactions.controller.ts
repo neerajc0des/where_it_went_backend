@@ -10,6 +10,7 @@ import {
 export const createTransactionController = async (req: Request, res: Response) => {
   try {
     const transaction = await createTransactionService(req.body, req.userId);
+    
     return res.status(201).json({
       success: true,
       message: 'Transaction created successfully',

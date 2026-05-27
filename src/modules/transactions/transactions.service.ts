@@ -35,8 +35,8 @@ export const createTransactionService = async(
         prisma.transaction.create({
             data: {
                 ...payload,
-                dayOfWeek,
-                hourOfDay 
+                hourOfDay,
+                dayOfWeek 
             },
         }),
         
