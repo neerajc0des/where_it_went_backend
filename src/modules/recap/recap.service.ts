@@ -65,8 +65,6 @@ const getPersonalityLabel = (transactions: any[])=>{
 
 }
 
-
-// TODO: implement actual correlation logic based on user's mood data and transaction patterns
 const getMoodCorrelation = async (userId: string, start: Date, end: Date) =>{
   const startWindow = new Date(start);
   startWindow.setHours(0, 0, 0, 0);
@@ -136,6 +134,7 @@ const getMoodCorrelation = async (userId: string, start: Date, end: Date) =>{
   return "You spend the most when you are " + highestMoodSpend + " with an average spend of Rs. " + highestAvg.toFixed(2);
 }
 
+// to generate recap
 export const generateRecapService = async (
   userId: string,
   payload: GenerateRecapInput,
@@ -251,3 +250,34 @@ export const generateRecapService = async (
     return recap;
 
 }
+
+
+// to get all recaps of a user
+export const getAllRecapsService = async (userId: string) => {
+  return await prisma.recap.findMany({
+    where: { userId },
+    orderBy: { generatedAt: 'desc' },
+    omit: { userId: true }
+  });
+};
+
+// to get recap by ots id
+export const getRecapByIdService = async (recapId: string, userId: string) => {
+  const recap = await prisma.recap.findFirst({
+    where: { id: recapId, userId },
+    omit: { userId: true }
+  });
+  if (!recap) throw new Error('Recap not found');
+  return recap;
+};
+
+// delete recap
+export const deleteRecapService = async (recapId: string, userId: string) => {
+  const recap = await prisma.recap.findFirst({
+    where: { id: recapId, userId }
+  });
+  if (!recap) throw new Error('Recap not found');
+
+  await prisma.recap.delete({ where: { id: recapId } });
+  return { message: 'Recap deleted successfully' };
+};
