@@ -9,6 +9,7 @@ import accountRoutes from './modules/accounts/accounts.routes';
 import categoryRoutes from './modules/categories/categories.routes';
 import transactionRoutes from './modules/transactions/transactions.routes';
 import moodRoutes from './modules/mood/mood.routes';
+import recapRoutes from './modules/recap/recap.routes';
 
 const app = express();
 app.use(cors({
@@ -27,6 +28,7 @@ app.use('/api/v1/accounts', accountRoutes);
 app.use('/api/v1/categories', categoryRoutes);
 app.use('/api/v1/transactions', transactionRoutes);
 app.use('/api/v1/moods', moodRoutes);
+app.use('/api/v1/recaps', recapRoutes);
 
 app.get('/api/v1/health', (_req, res) => {
   res.json({ status: 'ok' });
