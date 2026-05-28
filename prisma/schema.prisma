@@ -131,8 +131,8 @@ model Recap {
   highestSpend      Decimal     @default(0)
   lowestSpend       Decimal     @default(0)
   transactionCount  Int         @default(0)
-  categoryBreakdown Json        //{ "Food": 500, "Transport": 200 }
-  accountBreakdown  Json        //{ "SBI Savings": 1200, "Cash": 300 }
+  categoryBreakdown Json        @default("{}") //{ "Food": 500, "Transport": 200 }
+  accountBreakdown  Json        @default("{}") //{ "SBI Savings": 1200, "Cash": 300 }
   personalityLabel  String?
   moodCorrelation   String?                     // "Spent 40% more when stressed"
   generatedAt       DateTime    @default(now())
