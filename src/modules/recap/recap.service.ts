@@ -1,4 +1,5 @@
 import prisma from "../../config/db";
+import { formatToLocalDateKey } from "../../utils/date";
 import { GenerateRecapInput } from "./recap.schema";
 
 // helper funciton to get the time period for the recap
@@ -61,14 +62,81 @@ const getPersonalityLabel = (transactions: any[])=>{
   if (foodTxns.length / expenses.length > 0.4) return 'Foodie';
 
   return 'Balanced Spender';
-  
+
 }
 
+
+// TODO: implement actual correlation logic based on user's mood data and transaction patterns
 const getMoodCorrelation = async (userId: string, start: Date, end: Date) =>{
-  return "test string"
+  const startWindow = new Date(start);
+  startWindow.setHours(0, 0, 0, 0);
+
+  const endWindow = new Date(end);
+  endWindow.setHours(23, 59, 59, 999);
+
+  // fetching moods and transactions
+  const [moods, transactions] = await Promise.all([
+    prisma.mood.findMany({
+      where: { userId, loggedAt: { gte: startWindow, lte: endWindow } },
+      select: { mood: true, loggedAt: true }
+    }),
+
+    prisma.transaction.findMany({
+      where: {
+        account: { userId },
+        type: 'EXPENSE',
+        date: { gte: startWindow, lte: endWindow }
+      },
+      select: { amount: true, date: true }
+    })
+  ]);
+
+  if(moods.length === 0 || transactions.length === 0) return null;
+
+  // total spendings in a day (sum)
+  const totalSpendAday: Record<string, number> = {};
+  transactions.forEach(t=>{
+    const dateKey = formatToLocalDateKey(t.date);
+    totalSpendAday[dateKey] = (totalSpendAday[dateKey] || 0) + t.amount.toNumber();
+  });
+
+
+  // mood based spendings
+      // {
+      //   "Anxious": [100, 0],
+      //   "Happy": [150]
+      // }
+  const moodSpending: Record<string, number[]> = {};
+  moods.forEach(m=>{
+    const dateKey = formatToLocalDateKey(m.loggedAt);
+    const dayTotal = totalSpendAday[dateKey] || 0;
+
+    if (!moodSpending[m.mood]) 
+      moodSpending[m.mood] = [];
+
+    moodSpending[m.mood].push(dayTotal);
+  });
+
+
+  // finding mood with the highest average spending
+  let highestMoodSpend = '';
+  let highestAvg = 0;
+
+  // updating the highestAvg and mood
+  Object.entries(moodSpending).forEach(([mood, spends])=>{
+    const avg = spends.reduce((sum, s) => sum + s, 0) / spends.length;
+    if(avg > highestAvg){
+      highestAvg = avg;
+      highestMoodSpend = mood;
+    }
+  })
+
+  if(highestAvg===0 || !highestMoodSpend) return null;
+
+  return "You spend the most when you are " + highestMoodSpend + " with an average spend of Rs. " + highestAvg.toFixed(2);
 }
 
-const generateRecapService = async (
+export const generateRecapService = async (
   userId: string,
   payload: GenerateRecapInput,
 ) => {
