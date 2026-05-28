@@ -30,7 +30,38 @@ const getRecapTimePeriod = (
 }
 
 const getPersonalityLabel = (transactions: any[])=>{
-  return "test string"
+  const expenses = transactions.filter((t)=>{
+      return t.type === 'EXPENSE';
+  })
+
+  if (expenses.length === 0) return 'Saver';
+
+  // weekend spender - 50% transactions on weekend
+  const weekendTxns = expenses.filter(t => t.dayOfWeek === 0 || t.dayOfWeek === 6);
+  if (weekendTxns.length / expenses.length > 0.5) return 'Weekend Spender';
+
+  // night owl — 40%+ transactions after 10PM
+  const nightTxns = expenses.filter(t => 
+    t.hourOfDay >= 22 || t.hourOfDay <= 2
+  );
+  if (nightTxns.length / expenses.length > 0.4) return 'Night Owl Spender';
+
+  // impulse spender - more than 40% marked as impulse
+  const impulseTxns = expenses.filter(t => t.isImpulse);
+  if (impulseTxns.length / expenses.length > 0.4) return 'Impulse Spender';
+
+  // avg amount 
+  const avgAmount = expenses.reduce((sum, t) => 
+    sum + t.amount.toNumber(), 0) / expenses.length;
+
+  if (avgAmount > 1000) return 'Big Spender';
+  if (expenses.length > 30) return 'Frequent Spender';
+
+  const foodTxns = expenses.filter(t => t.category.name === 'Food');
+  if (foodTxns.length / expenses.length > 0.4) return 'Foodie';
+
+  return 'Balanced Spender';
+  
 }
 
 const getMoodCorrelation = async (userId: string, start: Date, end: Date) =>{
