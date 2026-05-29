@@ -30,11 +30,10 @@ export const markNudgeAsReadController = async(req: Request, res:Response)=>{
 
 export const getAllNudgesController = async (req:Request, res:Response)=>{
   try {
-    const nudges = getAllNudgesService(req.userId);
+    const nudges = await getAllNudgesService(req.userId);
 
     res.status(200).json({
       success: true,
-      message: "Nudge marked as read.",
       data: nudges
     })
   } catch (error:any) {
@@ -44,12 +43,11 @@ export const getAllNudgesController = async (req:Request, res:Response)=>{
 
 export const deleteNudgeController = async (req:Request, res:Response)=>{
   try {
-    const result = deleteNudgeService(req.params.id as string, req.userId);
+    const result = await deleteNudgeService(req.params.id as string, req.userId);
 
-    res.status(200).json({
+    return res.status(200).json({
       success: true,
-      message: "Nudge deleted successfully.",
-      data: result
+      message: result.message
     })
   } catch (error:any) {
     return res.status(400).json({ success: false, message: error.message });
