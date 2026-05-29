@@ -7,7 +7,7 @@ const router = Router();
 router.use(authenticate);
 
 router.get('/', getAllNudgesController);                                          
-router.get('/', generateBalancewarnNudgesController);        
+router.get('/generate-nudges', generateBalancewarnNudgesController);        
 router.patch('/:id', markNudgeAsReadController);                                  
 router.delete('/:id', deleteNudgeController);                                  
 

@@ -58,7 +58,7 @@ export const generateBalanceWarningNudgeService = async (userId: string) => {
     if(approxSpendThisMonth>allowedBudget){
       const extra = Math.round(approxSpendThisMonth - allowedBudget);
 
-      const message =  `Your ${account.name} account may fall short by ₹${extra} this month`;
+      const message =  `${account.name} budget may overshoot by ₹${extra} this month.`;
 
       const nudge = await prisma.nudge.create({
         data: {
