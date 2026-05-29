@@ -168,7 +168,6 @@ export const generateRecapService = async (
       }
     })
 
-    console.log("START: ", start, "\nEND: ", end, "\nALL TXNS: ", allTransactions.length);
 
     if(allTransactions.length===0)
       throw new Error('No transactions found in given time period');
