@@ -259,7 +259,6 @@ export const generateRecapService = async (
 
 }
 
-
 // to get all recaps of a user
 export const getAllRecapsService = async (userId: string) => {
   return await prisma.recap.findMany({
