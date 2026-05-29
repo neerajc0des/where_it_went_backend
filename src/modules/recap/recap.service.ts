@@ -75,13 +75,16 @@ const getMoodCorrelation = async (userId: string, start: Date, end: Date) =>{
   // fetching moods and transactions
   const [moods, transactions] = await Promise.all([
     prisma.mood.findMany({
-      where: { userId, loggedAt: { gte: startWindow, lte: endWindow } },
+      where: { 
+        userId, 
+        loggedAt: { gte: startWindow, lte: endWindow } 
+      },
       select: { mood: true, loggedAt: true }
     }),
 
     prisma.transaction.findMany({
       where: {
-        account: { userId },
+        account: { userId, isArchived: false},
         type: 'EXPENSE',
         date: { gte: startWindow, lte: endWindow }
       },
@@ -153,7 +156,10 @@ export const generateRecapService = async (
     // fetching all transaction in that time period
     const allTransactions = await prisma.transaction.findMany({
       where: {
-        accountId: userId,
+        account: {
+          userId,
+          isArchived: false,
+        },
         date: {gte: start, lte: end}
       },
       include: {
@@ -161,6 +167,8 @@ export const generateRecapService = async (
         category: {select: {name: true}}
       }
     })
+
+    console.log("START: ", start, "\nEND: ", end, "\nALL TXNS: ", allTransactions.length);
 
     if(allTransactions.length===0)
       throw new Error('No transactions found in given time period');
@@ -244,7 +252,8 @@ export const generateRecapService = async (
         personalityLabel: personalitylabel,
         moodCorrelation: moodCorrelation,
         userId
-      }
+      },
+      omit: { userId: true }
     });
 
     return recap;
