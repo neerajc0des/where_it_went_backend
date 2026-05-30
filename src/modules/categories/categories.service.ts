@@ -18,8 +18,8 @@ export const getCategoriesService = async (userId: string) => {
   });
 
   // separate into two groups for cleaner frontend consumption
-  const defaultCategories = categories.filter(c => c.isDefault);
-  const customCategories = categories.filter(c => !c.isDefault);
+  const defaultCategories = categories.filter((c:any) => c.isDefault);
+  const customCategories = categories.filter((c:any) => !c.isDefault);
 
   return { defaultCategories, customCategories };
 };

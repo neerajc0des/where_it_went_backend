@@ -5,7 +5,7 @@
   "main": "index.js",
   "scripts": {
     "dev": "nodemon",
-    "build": "tsc && npx prisma generate && npx prisma db push",
+    "build": "npx prisma generate && tsc && npx prisma db push",
     "start": "node dist/server.js"
   },
   "engines": {

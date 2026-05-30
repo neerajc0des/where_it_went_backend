@@ -6,6 +6,7 @@
     "strict": true,
     "esModuleInterop": true,
     "ignoreDeprecations": "6.0",
-    "types": ["node"]
+    "types": ["node"],
+    "skipLibCheck": true
   }
 }
