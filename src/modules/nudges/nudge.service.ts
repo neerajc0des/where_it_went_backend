@@ -44,7 +44,7 @@ export const generateBalanceWarningNudgeService = async (userId: string) => {
       }
     });
 
-    const spendingTillNow = transactions.reduce((sum, t)=>{ 
+    const spendingTillNow = transactions.reduce((sum:number, t:any)=>{ 
       return sum+t.amount.toNumber()
     }, 0)
 

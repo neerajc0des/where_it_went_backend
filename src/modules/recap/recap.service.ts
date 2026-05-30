@@ -52,7 +52,7 @@ const getPersonalityLabel = (transactions: any[])=>{
   if (impulseTxns.length / expenses.length > 0.4) return 'Impulse Spender';
 
   // avg amount 
-  const avgAmount = expenses.reduce((sum, t) => 
+  const avgAmount = expenses.reduce((sum:number, t:any) => 
     sum + t.amount.toNumber(), 0) / expenses.length;
 
   if (avgAmount > 1000) return 'Big Spender';
@@ -108,7 +108,7 @@ const getMoodCorrelation = async (userId: string, start: Date, end: Date) =>{
       //   "Happy": [150]
       // }
   const moodSpending: Record<string, number[]> = {};
-  moods.forEach(m=>{
+  moods.forEach((m:any)=>{
     const dateKey = formatToLocalDateKey(m.loggedAt);
     const dayTotal = totalSpendAday[dateKey] || 0;
 
@@ -125,7 +125,7 @@ const getMoodCorrelation = async (userId: string, start: Date, end: Date) =>{
 
   // updating the highestAvg and mood
   Object.entries(moodSpending).forEach(([mood, spends])=>{
-    const avg = spends.reduce((sum, s) => sum + s, 0) / spends.length;
+    const avg = spends.reduce((sum:number, s:any) => sum + s, 0) / spends.length;
     if(avg > highestAvg){
       highestAvg = avg;
       highestMoodSpend = mood;
@@ -173,19 +173,19 @@ export const generateRecapService = async (
       throw new Error('No transactions found in given time period');
 
     // filtering expense and income
-    const expenses = allTransactions.filter((t)=>{
+    const expenses = allTransactions.filter((t:any)=>{
       return t.type === 'EXPENSE';
     })
-    const incomes = allTransactions.filter((t)=>{
+    const incomes = allTransactions.filter((t:any)=>{
       return t.type === 'INCOME';
     })
 
     // calculating total spend and income
-    const totalExpense = expenses.reduce((sum, t)=>{
+    const totalExpense = expenses.reduce((sum:number, t:any)=>{
       return sum+ t.amount.toNumber();
     },0);
 
-    const totalIncome = incomes.reduce((sum, t)=>{
+    const totalIncome = incomes.reduce((sum:number, t:any)=>{
       return sum+ t.amount.toNumber();
     },0)
 
@@ -193,7 +193,7 @@ export const generateRecapService = async (
 
     
     // highest and lowest spendings
-    const amountArr = expenses.map((t)=>{
+    const amountArr = expenses.map((t:any)=>{
       return t.amount.toNumber();
     })
     const highestSpend = amountArr.length>0? Math.max(...amountArr) : 0;
