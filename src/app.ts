@@ -24,17 +24,19 @@ app.use(express.json());
 
 app.use(passport.initialize());
 
+const apiVersion = process.env.API_VERSION;
 
-app.use('/api/v1/auth', authRoutes);
-app.use('/api/v1/accounts', accountRoutes);
-app.use('/api/v1/categories', categoryRoutes);
-app.use('/api/v1/transactions', transactionRoutes);
-app.use('/api/v1/moods', moodRoutes);
-app.use('/api/v1/recaps', recapRoutes);
-app.use('/api/v1/nudges', nudgeRoutes);
-app.use('/api/v1/nlp', aiRoutes);
 
-app.get('/api/v1/health', (_req, res) => {
+app.use(`${apiVersion}/auth`, authRoutes);
+app.use(`${apiVersion}/accounts`, accountRoutes);
+app.use(`${apiVersion}/categories`, categoryRoutes);
+app.use(`${apiVersion}/transactions`, transactionRoutes);
+app.use(`${apiVersion}/moods`, moodRoutes);
+app.use(`${apiVersion}/recaps`, recapRoutes);
+app.use(`${apiVersion}/nudges`, nudgeRoutes);
+app.use(`${apiVersion}/nlp`, aiRoutes);
+
+app.get(`${apiVersion}/health`, (_req, res) => {
   res.json({ status: 'ok' });
 });
 
