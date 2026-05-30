@@ -9,6 +9,10 @@ export const createAccountService = async (
 ) => {
     const {name, type, balance, monthlyBudget} = payload;
 
+    if (name.trim().toLowerCase() === 'wallet') {
+        throw new Error("The name 'Wallet' is reserved by the system.")
+    }
+
     const account = await prisma.account.create({
         data: {
             name,

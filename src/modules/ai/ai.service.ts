@@ -1,13 +1,77 @@
 import 'dotenv/config';
 import { GoogleGenAI, Type } from "@google/genai";
 import prisma from '../../config/db';
+import { SmartEntryInput } from './ai.schema';
 
 const ai = new GoogleGenAI({apiKey: process.env.GEMINI_API_KEY});
 
-const smartEntryService = async (
+const buildSystemPrompt = (
+  formattedCategories: string,
+  formattedAccounts: string,
+  defaultAccountId: string
+) => `
+You are a financial data extraction utility. Extract transaction details from natural language.
+
+RULES:
+1. Amount: Extract the numeric value. If no amount mentioned, set to 0.
+2. Merchant: Clean name of store/vendor/app. Use "Unknown" if unclear.
+3. CategoryId: Pick the EXACT ID from the list below that best fits.
+4. AccountId: Pick the EXACT ID based on payment method clues (gpay/online → bank, cash → cash).
+   If no payment method mentioned → use default account ID: "${defaultAccountId}"
+5. Type: If category type is INCOME → set "INCOME". Otherwise → "EXPENSE".
+6. Note: Short, friendly description (e.g. "Midnight snack craving", "Monthly salary").
+7. isImpulse: true only if clearly unplanned/spontaneous (late night snacks, random shopping).
+
+AVAILABLE CATEGORIES:
+${formattedCategories}
+
+AVAILABLE ACCOUNTS:
+${formattedAccounts}
+
+Respond ONLY with valid JSON matching the schema. No extra text.
+`;
+
+const getResponseSchema = () => ({
+    type: Type.OBJECT,
+    properties: {
+        amount: { 
+            type: Type.NUMBER, 
+            description: "The total amount spent or earned. If the user did not mention any price or number, strictly set this to 0." 
+        },
+        merchant: { 
+            type: Type.STRING, 
+            description: "The clean name of the store, vendor, or app (e.g., 'Zomato', 'Amazon', 'Starbucks'). Use 'Unknown' if not clear." 
+        },
+        categoryId: {
+            type: Type.STRING,
+            description: "The exact ID of the category that best fits this transaction, chosen from the provided list."
+        },
+        accountId: {
+            type: Type.STRING,
+            description: "The exact ID of the matched payment account from the provided list."
+        },
+        type: {
+            type: Type.STRING,
+            enum: ["EXPENSE", "INCOME"],
+        },
+        note: { 
+            type: Type.STRING, 
+            description: "A friendly, capitalized short note describing what this was (e.g., 'Pocket money', 'Midnight snack cravings', 'Electricity bill payment')." 
+        },
+        isImpulse: { 
+            type: Type.BOOLEAN, 
+            description: "Set to true if the context strongly implies a sudden, non-essential splurge or unplanned shopping (e.g., junk food, gaming, impulse buying). Otherwise set to false." 
+        }
+    },
+    required: ["amount", "merchant", "categoryId", "accountId", "type", "note", "isImpulse"],
+});
+
+export const smartEntryService = async (
     userId: string,
-    userInput: string,
+    payload: SmartEntryInput,
 )=>{
+
+    const {prompt: userInput} = payload;
 
     //fetching available categories
     const categories = await prisma.transactionCategory.findMany({
@@ -25,7 +89,7 @@ const smartEntryService = async (
     });
 
     const formattedCats = categories.map((cat)=>{
-        return `- ID: "${cat.id}" | NAME: "${cat.name} | TYPE: "${cat.type}"`
+        return `- ID: "${cat.id}" | NAME: "${cat.name}" | TYPE: "${cat.type}"`
     }).join("\n");
 
     // fetching all the accounts
@@ -36,67 +100,32 @@ const smartEntryService = async (
 
     if(accounts.length===0) throw new Error('User has no accounts set up.');
 
-    const defaultAcc = accounts.find(acc=> acc.name.toLowerCase().includes('cash')) || accounts[0];
+    const defaultAcc = accounts.find(acc=> acc.name.toLowerCase()==='wallet') || accounts[0];
     const formattedAcc = accounts.map((acc)=>{
         return `- ACCOUNT_ID: "${acc.id}" | ACCOUNT_NAME: "${acc.name}"`;
     }).join("\n");
 
-    const response = await ai.models.generateContent({
-        model: "gemini-2.5-flash",
-        contents: `Parse this transaction text: "${userInput}"`,
-        config: {
-            systemInstruction: `
-                You are a backend utility that extracts financial data from text. 
-                Analyze the user's input and perform the following tasks:
-                1. Extract the numeric amount. If the user does not specify a price or amount anywhere in the text (e.g., "ate momos", "filled petrol"), strictly set the amount to 0
-                2. Identify the merchant or item name (e.g., 'Starbucks', 'Netflix', 'Zomato') for the description.
-                3. Map the transaction to the most appropriate Category ID from this list: \n
-                ${formattedCats}
-                4. Map to the most appropriate Account ID from this list based on contextual payment clues (e.g., 'gpay', 'online', 'bank' might map to a bank account; 'cash' maps to cash):
-                ${formattedAcc}
-                If the user does not specify HOW they paid (e.g., "spent 200 on momos"), you MUST strictly return this default Account ID: "${defaultAcc.id}"
-                Strictly choose an IDs from the list provided above. If the matched category has a Type of 'INCOME', set the transaction type to 'INCOME'. If it has a Type of 'EXPENSE', set it to 'EXPENSE'.
-            `,
+    const prompt = `Parse this transaction text: "${userInput}"`;
+    const config = {
+            systemInstruction: buildSystemPrompt(formattedCats, formattedAcc, defaultAcc.id),
             responseMimeType: "application/json",
-            responseSchema: {
-                type: Type.OBJECT,
-                properties: {
-                    amount: { 
-                        type: Type.NUMBER, 
-                        description: "The total amount spent or earned. If the user did not mention any price or number, strictly set this to 0." 
-                    },
-                    merchant: { 
-                        type: Type.STRING, 
-                        description: "The clean name of the store, vendor, or app (e.g., 'Zomato', 'Amazon', 'Starbucks'). Use 'Unknown' if not clear." 
-                    },
-                    categoryId: {
-                        type: Type.STRING,
-                        description: "The exact ID of the category that best fits this transaction, chosen from the provided list."
-                    },
-                    accountId: {
-                        type: Type.STRING,
-                        description: "The exact ID of the matched payment account from the provided list."
-                    },
-                    type: {
-                        type: Type.STRING,
-                        enum: ["EXPENSE", "INCOME"],
-                    },
-                    note: { 
-                        type: Type.STRING, 
-                        description: "A friendly, capitalized short note describing what this was (e.g., 'Pocket money', 'Midnight snack cravings', 'Electricity bill payment')." 
-                    },
-                    isImpulse: { 
-                        type: Type.BOOLEAN, 
-                        description: "Set to true if the context strongly implies a sudden, non-essential splurge or unplanned shopping (e.g., junk food, gaming, impulse buying). Otherwise set to false." 
-                    }
-                },
-                required: ["amount", "merchant", "categoryId", "accountId", "type", "note", "isImpulse"],
-            }
+            responseSchema: getResponseSchema(),
         }
-    });
+    const response = await generateWithRetry(prompt, config);
 
-    if (!response.text) {
-        throw new Error("Empty response text from AI model");
+    // const response = await ai.models.generateContent({
+    //     model: "gemini-2.5-flash",
+    //     contents: `Parse this transaction text: "${userInput}"`,
+    //     config: {
+    //         systemInstruction: buildSystemPrompt(formattedCats, formattedAcc, defaultAcc.id),
+    //         responseMimeType: "application/json",
+    //         responseSchema: getResponseSchema,
+    //     }
+    // });
+
+
+    if (!response || !response.text) {
+        throw new Error("Gemini engine failed to return parseable text.");
     }
     
     const parsedData = JSON.parse(response.text);
@@ -113,8 +142,7 @@ const smartEntryService = async (
     if (!validAccount) throw new Error('AI returned invalid account');
 
     const date = new Date();
-    const [transaction] = await prisma.$transaction([
-        prisma.transaction.create({
+    const transaction = await prisma.transaction.create({
             data: {
             amount: parsedData.amount,
             type: parsedData.type,
@@ -127,16 +155,16 @@ const smartEntryService = async (
             hourOfDay: date.getHours(),
             dayOfWeek: date.getDay(),
             }
-        }),
-        prisma.account.update({
+        });
+
+    await prisma.account.update({
             where: { id: parsedData.accountId },
             data: {
             balance: parsedData.type === 'EXPENSE'
                 ? { decrement: parsedData.amount }
                 : { increment: parsedData.amount }
             }
-        })
-    ]);
+        });
 
     return {
         transaction,
@@ -161,14 +189,3 @@ const generateWithRetry = async (contents: string, config: any, retries = 3) => 
     }
   }
 };
-
-// async function runTest() {
-//     try {
-//         const response = await smartEntryService("d9dabfc9-97f5-412e-a662-b7d076d330f1", "ate momos at some local vendor and paid 60 rupees for that");
-//         console.log(response); // Use .text to get the clear string response
-//     } catch (error) {
-//         console.error("Error executing Gemini service:", error);
-//     }
-// }
-
-// runTest();
