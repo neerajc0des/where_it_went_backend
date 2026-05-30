@@ -88,7 +88,7 @@ export const smartEntryService = async (
       }
     });
 
-    const formattedCats = categories.map((cat)=>{
+    const formattedCats = categories.map((cat:any)=>{
         return `- ID: "${cat.id}" | NAME: "${cat.name}" | TYPE: "${cat.type}"`
     }).join("\n");
 
@@ -101,7 +101,7 @@ export const smartEntryService = async (
     if(accounts.length===0) throw new Error('User has no accounts set up.');
 
     const defaultAcc = accounts.find(acc=> acc.name.toLowerCase()==='wallet') || accounts[0];
-    const formattedAcc = accounts.map((acc)=>{
+    const formattedAcc = accounts.map((acc:any)=>{
         return `- ACCOUNT_ID: "${acc.id}" | ACCOUNT_NAME: "${acc.name}"`;
     }).join("\n");
 
@@ -135,10 +135,10 @@ export const smartEntryService = async (
     }
 
     // validate AI returned valid IDs
-    const validCategory = categories.find(c => c.id === parsedData.categoryId);
+    const validCategory = categories.find((c:any) => c.id === parsedData.categoryId);
     if (!validCategory) throw new Error('AI returned invalid category');
 
-    const validAccount = accounts.find(a => a.id === parsedData.accountId);
+    const validAccount = accounts.find((a:any) => a.id === parsedData.accountId);
     if (!validAccount) throw new Error('AI returned invalid account');
 
     const date = new Date();
