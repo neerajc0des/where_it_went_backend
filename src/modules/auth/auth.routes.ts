@@ -43,22 +43,24 @@ router.get('/google/redirect',
   (req: Request, res: Response) => {
     const user = req.user as any;
     // redirect to frontend with tokens in query params
-    // res.redirect(
-    //   `${process.env.FRONTEND_URL}/auth/redirect?accessToken=${user.appAccessToken}&refreshToken=${user.appRefreshToken}`
-    // );
+    return res.redirect(
+      `${process.env.FRONTEND_URL}/callback?accessToken=${encodeURIComponent(
+        user.appAccessToken
+      )}&refreshToken=${encodeURIComponent(user.appRefreshToken)}`   
+     );
 
-    return res.status(200).json({
-      success: true,
-      data: {
-        accessToken: user.appAccessToken,
-        refreshToken: user.appRefreshToken,
-        user: {
-          id: user.id,
-          name: user.name,
-          email: user.email,
-        }
-      }
-    });
+    // return res.status(200).json({
+    //   success: true,
+    //   data: {
+    //     accessToken: user.appAccessToken,
+    //     refreshToken: user.appRefreshToken,
+    //     user: {
+    //       id: user.id,
+    //       name: user.name,
+    //       email: user.email,
+    //     }
+    //   }
+    // });
   }
 );
 

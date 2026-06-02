@@ -98,12 +98,9 @@ export const getMeController = async (req: Request, res: Response) => {
         const userId = req.userId;
         const user = await prisma.user.findUnique({
         where: { id: userId },
-        select: { 
-            id: true, 
-            name: true, 
-            email: true, 
-            createdAt: true }
+        omit: {password: true},
         });
+
 
         return res.status(200).json({ success: true, data: user });
 
