@@ -176,10 +176,16 @@ export const loginService = async (
         }
     });
 
-    return {
+    const userData = {
         id: existingUser.id,
         name: existingUser.name,
         email: existingUser.email,
+        googleId: existingUser.googleId,
+        avatar: existingUser.avatar,
+    }
+
+    return {
+        user: userData,
         accessToken,
         refreshToken,
     };
