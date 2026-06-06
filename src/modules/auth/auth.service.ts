@@ -25,8 +25,13 @@ export const registerService = async (
         },
     });
 
+    if(existingUser && !existingUser?.isEmailVerified){
+        resendVerificationEmailService(existingUser.email);
+        throw new Error('User with this email already exists but is not verified. Please check your email for verification link.');
+    }
+
     if(existingUser) {
-        throw new Error('User already exists');
+        throw new Error('User with this email already exists');
     }
 
     // creating new user

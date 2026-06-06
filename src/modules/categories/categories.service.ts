@@ -80,24 +80,28 @@ export const updateCategoryService = async (
   payload: UpdateCategoryInput
 ) => {
   const category = await prisma.transactionCategory.findFirst({
-    where: { id: categoryId, userId } // only own custom categories
-  });
+    where: { id: categoryId, userId }
+  }); 
 
-  if (!category) throw new Error('Category not found');
-  if (category.isDefault) throw new Error('Cannot update default categories');
+  if (!category) throw new Error('Category not found'); 
 
-  // check name conflict if name is being changed
   if (payload.name && payload.name !== category.name) {
     const nameExists = await prisma.transactionCategory.findFirst({
-      where: { name: payload.name, type: category.type, userId }
+      where: { 
+        name: { equals: payload.name },
+        userId 
+      }
     });
-    if (nameExists) throw new Error('You already have a category with this name');
+    
+    if (nameExists && nameExists.id !== categoryId) {
+      throw new Error('You already have a category with this name');
+    }
   }
 
   return await prisma.transactionCategory.update({
     where: { id: categoryId },
-    data: { ...payload },
-    omit: { userId: true }
+    data: { ...payload},
+    omit: { userId: true }  
   });
 };
 
@@ -133,7 +137,7 @@ export const deleteCategoryService = async (
   });
 
   if (!category) throw new Error('Category not found');
-  if (category.isDefault) throw new Error('Cannot delete default categories');
+  // if (category.isDefault) throw new Error('Cannot delete default categories');
 
   await prisma.transactionCategory.delete({
     where: { id: categoryId }

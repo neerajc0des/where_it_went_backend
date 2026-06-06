@@ -16,7 +16,7 @@ export const sendVerificationEmail = async (email: string, token: string) => {
     const baseUrl = process.env.FRONTEND_URL || process.env.API_URL || "http://localhost:8080";
     
 
-    const verificationLink = `${baseUrl}/auth/verify-email?token=${token}`;
+    const verificationLink = `${baseUrl}/verify-email?token=${token}`;
 
     const info = await transporter.sendMail({
         from: '"Finance Tracker" <noreply@financetracker.com>',

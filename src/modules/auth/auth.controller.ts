@@ -48,7 +48,7 @@ export const verifyEmail = async (req: Request, res: Response) => {
     const result = await verifyEmailService(token);
     res.status(200).json({
          success: true,
-        result,
+         data: result
     });
   } catch (error: any) {
     res.status(400).json({ success: false, error: error.message });
