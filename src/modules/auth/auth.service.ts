@@ -5,6 +5,7 @@ import { RegisterInput } from "./auth.schema";
 import { generateAccessToken, generateRefreshToken, verifyRefreshToken } from "../../utils/jwt";
 import { sendPasswordResetEmail, sendVerificationEmail } from "../../utils/email";
 import { UAParser } from "ua-parser-js";
+import { seedDefaultCategoriesService } from "../categories/categories.service";
 
 interface DeviceInfo {
   ipAddress?: string;
@@ -282,6 +283,8 @@ export const verifyEmailService = async (token: string) => {
             data: { isUsed: true } ,
         }),
     ]);
+    
+    await seedDefaultCategoriesService(verificationRecord.userId);
 
     return { message: "Email successfully verified. You can now log in." };
 };

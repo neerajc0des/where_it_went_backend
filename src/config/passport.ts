@@ -4,6 +4,7 @@ import { Strategy as GoogleStrategy } from 'passport-google-oauth20';
 import prisma from './db';
 import { generateAccessToken, generateRefreshToken } from '../utils/jwt';
 import { UAParser } from 'ua-parser-js';
+import { seedDefaultCategoriesService } from '../modules/categories/categories.service';
 
 passport.use(
   new GoogleStrategy(
@@ -44,6 +45,8 @@ passport.use(
               isEmailVerified: true,
             }
           });
+
+          await seedDefaultCategoriesService(user.id)
         }
 
         // generate your own JWT tokens

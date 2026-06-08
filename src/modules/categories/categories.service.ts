@@ -1,6 +1,7 @@
 import { Prisma } from '@prisma/client';
 import prisma from '../../config/db';
 import { CreateCategoryInput, UpdateCategoryInput } from './categories.schema';
+import { DEFAULT_CATEGORIES } from '../../utils/default-categories';
 
 // get all categories 
 export const getCategoriesService = async (userId: string) => {
@@ -148,4 +149,15 @@ export const deleteCategoryService = async (
   });
 
   return { message: 'Category and its transactions deleted successfully' };
+};
+
+export const seedDefaultCategoriesService = async (userId: string) => {
+  await prisma.transactionCategory.createMany({
+    data: DEFAULT_CATEGORIES.map((cat) => ({
+      ...cat,
+      userId,
+      isDefault: true,
+    })),
+    skipDuplicates: true, 
+  });
 };
