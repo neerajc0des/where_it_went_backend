@@ -60,7 +60,7 @@ model VerificationToken {
 model Account {
   id              String        @id @default(uuid())
   name            String        // "SBI Savings", "Cash", "GPay Wallet"
-  type            AccountType
+  icon            String        @default("cash")
   balance         Decimal       @default(0)
   monthlyBudget   Decimal?        // optional spending limit
   createdAt       DateTime      @default(now())

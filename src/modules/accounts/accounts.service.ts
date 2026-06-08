@@ -7,7 +7,7 @@ export const createAccountService = async (
     payload: CreateAccountInput,
     userId: string
 ) => {
-    const {name, type, balance, monthlyBudget} = payload;
+    const {name, icon, balance, monthlyBudget} = payload;
 
     if (name.trim().toLowerCase() === 'wallet') {
         throw new Error("The name 'Wallet' is reserved by the system.")
@@ -16,7 +16,7 @@ export const createAccountService = async (
     const account = await prisma.account.create({
         data: {
             name,
-            type,
+            icon,
             balance,
             monthlyBudget,
             userId
@@ -33,7 +33,7 @@ export const updateAccountService = async (
     payLoad: UpdateAccountInput,
     userId: string
 )=>{
-    const {name, type, balance, monthlyBudget} = payLoad;
+    const {name, icon, balance, monthlyBudget} = payLoad;
 
     const account = await prisma.account.findFirst({
         where: {
@@ -56,7 +56,6 @@ export const updateAccountService = async (
 
     return updatedAccount;
 }
-
 
 export const deleteAccountService = async(
     accountId:string,
