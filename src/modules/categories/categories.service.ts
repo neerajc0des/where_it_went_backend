@@ -55,7 +55,7 @@ export const createCategoryService = async (
 
   // check if user already has a custom category with same name and type
   const catExists = await prisma.transactionCategory.findFirst({
-    where: { name, userId }
+    where: { name: { equals: name, mode: 'insensitive' }, userId }
   });
   if (catExists) throw new Error('You already have a category with this name');
 
