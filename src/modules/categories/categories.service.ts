@@ -142,7 +142,6 @@ export const deleteCategoryService = async (
   });
 
   if (!category) throw new Error('Category not found');
-  if (category.isDefault) throw new Error('Cannot delete default categories');
 
   await prisma.transactionCategory.delete({
     where: { id: categoryId }
