@@ -1,3 +1,4 @@
+import { Prisma } from '@prisma/client';
 import prisma from '../../config/db';
 import { CreateCategoryInput, UpdateCategoryInput } from './categories.schema';
 
@@ -50,26 +51,29 @@ export const createCategoryService = async (
   userId: string,
   payload: CreateCategoryInput
 ) => {
-  const { name, icon, type } = payload;
-
-  // check if default category with same name and type already exists
-  const defaultExists = await prisma.transactionCategory.findFirst({
-    where: { name, type, userId: null }
-  });
-  if (defaultExists) throw new Error('A default category with this name already exists');
+  const { name, icon, type, isDefault } = payload;
 
   // check if user already has a custom category with same name and type
-  const customExists = await prisma.transactionCategory.findFirst({
-    where: { name, type, userId }
+  const catExists = await prisma.transactionCategory.findFirst({
+    where: { name, userId }
   });
-  if (customExists) throw new Error('You already have a category with this name');
+  if (catExists) throw new Error('You already have a category with this name');
 
-  const category = await prisma.transactionCategory.create({
-    data: { name, icon, type, userId, isDefault: false },
-    omit: { userId: true }
-  });
+  try {
+    return await prisma.transactionCategory.create({
+      data: { name, icon, type, userId, isDefault },
+      omit: { userId: true }
+    });
 
-  return category;
+  } catch (error:any) {
+    if (
+      error instanceof Prisma.PrismaClientKnownRequestError &&
+      error.code === 'P2002'
+    ) {
+      throw new Error('You already have a category with this name');
+    }
+    throw error;
+  }
 };
 
 

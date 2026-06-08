@@ -7,6 +7,7 @@ export const createCategorySchema = z.object({
     name: z.string().min(1, 'Name is required').max(50, 'Name too long'),
     icon: z.string().max(50, 'Icon name too long').optional(),
     type: TransactionTypeEnum,
+    isDefault: z.boolean().default(false)
   })
 });
 
