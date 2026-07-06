@@ -7,6 +7,7 @@ export const createAccountSchema = z.object({
         .min(2, "Account name must be at least 2 characters")
         .max(100, "Account name must be at most 100 characters"),
         icon: z.string(),
+        isPrimary: z.boolean().default(false),
         balance: z.number().min(0, "Balance cannot be negative"),
         monthlyBudget: z.number().min(0, "Budget cannot be negative").optional(),
     })
@@ -17,6 +18,8 @@ export const updateAccountSchema = z.object({
   body: z.object({
     name: z.string().min(2).max(100).optional(),
     icon: z.string(),
+    isPrimary: z.boolean().optional(),
+    isArchived: z.boolean().optional(),
     balance: z.number().min(0).optional(),
     monthlyBudget: z.number().min(0).optional(),
     }).refine(

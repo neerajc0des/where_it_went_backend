@@ -135,7 +135,6 @@ export const updateTransactionService = async(
     return transaction;
 }
 
-
 export const deleteTransactionService = async(
     transactionId: string,
     userId: string
@@ -197,7 +196,7 @@ export const getAllTransactionService = async(
             },  
             include: {
                 category: { select: { id: true, name: true, icon: true, type: true } },
-                account: { select: { id: true, name: true, type: true } }
+                account: { select: { id: true, name: true } }
             },
             orderBy: { date: 'desc' },
             skip,
@@ -207,9 +206,9 @@ export const getAllTransactionService = async(
         prisma.transaction.count({
             where: {
                 account: {
-                userId,
-                isArchived: false,
-                ...(accountId && { id: accountId })
+                    userId,
+                    isArchived: false,
+                    ...(accountId && { id: accountId })
                 }
             }
         })
@@ -221,7 +220,8 @@ export const getAllTransactionService = async(
             total,
             page,
             limit,
-            totalPages: Math.ceil(total / limit)
+            totalPages: Math.ceil(total / limit),
+            hasNextPage: page * limit < total,
         }
     };
 }

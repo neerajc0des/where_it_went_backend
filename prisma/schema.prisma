@@ -62,10 +62,13 @@ model Account {
   name            String        // "SBI Savings", "Cash", "GPay Wallet"
   icon            String        @default("cash")
   balance         Decimal       @default(0)
+  openingBalance  Decimal       @default(0)
   monthlyBudget   Decimal?        // optional spending limit
   createdAt       DateTime      @default(now())
   updatedAt       DateTime      @updatedAt
   isArchived      Boolean       @default(false) 
+  isDeleted       Boolean       @default(false) 
+  isPrimary       Boolean       @default(false) 
 
   userId          String
   user            User          @relation(fields: [userId], references: [id], onDelete: Cascade)
