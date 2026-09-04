@@ -14,7 +14,7 @@ A comprehensive expense tracking and financial wellness backend API built with N
 - **Mood Logging** - Log mood states and correlate them with spending patterns
 - **Financial Recaps** - Auto-generated summaries with spending trends and personality insights
 - **Smart Nudges** - Behavioral nudges to encourage better financial decisions
-- **AI Integration** - AI-powered analysis and insights on spending patterns
+- **AI Integration** - AI-powered smart entry and insights on spending patterns
 
 ## Tech Stack
 
