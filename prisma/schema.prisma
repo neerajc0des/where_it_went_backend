@@ -8,6 +8,7 @@ datasource db {
 }
 
 
+
 model User {
   id            String        @id @default(uuid())
   email         String        @unique
@@ -154,7 +155,6 @@ model Nudge {
   userId      String
   user        User        @relation(fields: [userId], references: [id], onDelete: Cascade)
 }
-
 
 enum AccountType {
   BANK

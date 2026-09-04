@@ -12,6 +12,7 @@ import moodRoutes from './modules/mood/mood.routes';
 import recapRoutes from './modules/recap/recap.routes';
 import nudgeRoutes from './modules/nudges/nudge.routes';
 import aiRoutes from './modules/ai/ai.route';
+import analyticsRoutes from './modules/analytics/analytics.routes';
 
 const app = express();
 app.use(cors({
@@ -35,6 +36,7 @@ app.use(`${apiVersion}/moods`, moodRoutes);
 app.use(`${apiVersion}/recaps`, recapRoutes);
 app.use(`${apiVersion}/nudges`, nudgeRoutes);
 app.use(`${apiVersion}/nlp`, aiRoutes);
+app.use(`${apiVersion}/analytics`, analyticsRoutes);
 
 app.get(`${apiVersion}/health`, (_req, res) => {
   res.json({ status: 'ok' });

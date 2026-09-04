@@ -17,10 +17,12 @@ export const createAccountSchema = z.object({
 export const updateAccountSchema = z.object({
   body: z.object({
     name: z.string().min(2).max(100).optional(),
-    icon: z.string(),
+    icon: z.string().optional(),
     isPrimary: z.boolean().optional(),
     isArchived: z.boolean().optional(),
-    balance: z.number().min(0).optional(),
+    // the running balance is derived from transactions and is not client-editable;
+    // correcting the opening balance shifts it by the same delta
+    openingBalance: z.number().optional(),
     monthlyBudget: z.number().min(0).optional(),
     }).refine(
         data => Object.keys(data).length > 0,

@@ -1,5 +1,9 @@
 import prisma from "../../config/db";
+import { Prisma } from "@prisma/client";
+
 import { CreateAccountInput, UpdateAccountInput } from "./accounts.schema";
+import { getAllTransactionService } from "../transactions/transactions.service";
+import { TransactionFiltersQuery } from "../transactions/transactions.schema";
 
 
 // create account
@@ -43,14 +47,23 @@ export const updateAccountService = async (
 
     if (!account) throw new Error('Account not found');
 
+    const data: Prisma.AccountUpdateInput = { ...payLoad };
+
+    // balance is openingBalance plus everything the transactions did to it, so a
+    // corrected opening balance has to shift the running balance by the same amount.
+    // Recomputing from the transactions instead would undo any manual correction.
+    if (payLoad.openingBalance !== undefined) {
+        const delta = payLoad.openingBalance - account.openingBalance.toNumber();
+
+        if (delta !== 0) data.balance = { increment: delta };
+    }
+
     const updatedAccount = await prisma.account.update({
         where: {
             id: accountId,
         },
-        data: {
-            ...payLoad
-        },
-        omit: { userId: true }, 
+        data,
+        omit: { userId: true },
     });
 
     return updatedAccount;
@@ -174,9 +187,12 @@ export const getAccountByIdService = async (accountId: string, userId: string) =
 export const getAccountTransactionsService = async (
     userId: string,
     accountId: string,
-    page: number,
-    limit: number
+    filters: Partial<TransactionFiltersQuery> = {}
 ) => {
+    // an empty id used to fall through to findFirst({ id: undefined }), which matched the
+    // user's first account and then listed every transaction in the table — reject it here
+    if (!accountId) throw new Error("Account not found");
+
     const account = await prisma.account.findFirst({
         where: {
             id: accountId,
@@ -188,29 +204,166 @@ export const getAccountTransactionsService = async (
         throw new Error("Account not found");
     }
 
-    const skip = (page - 1) * limit;
+    // delegated so this route returns exactly what GET /transactions returns — same
+    // filters, same joined category/account, same ordering, same pagination and totals
+    return getAllTransactionService(userId, { ...filters, accountId });
+};
 
-    const [transactions, total] = await prisma.$transaction([
-        prisma.transaction.findMany({
-            where: { accountId },
-            orderBy: { createdAt: "desc" },
-            skip,
-            take: limit,
-        }),
+type Period = "all" | "week" | "month" | "year";
 
-        prisma.transaction.count({
-            where: { accountId },
-        }),
-    ]);
+export const getAccountAnalyticsService = async (
+    userId: string,
+    accountId: string,
+    period: Period = "all",
+    from?: string,
+    to?: string,
+) => {
+    const account = await prisma.account.findFirst({
+        where: {
+            id: accountId,
+            userId,
+        },
+        select: {
+            id: true,
+            name: true,
+            balance: true,
+        },
+    });
+
+    if (!account) {
+        throw new Error("Account not found");
+    }
+
+    const now = new Date();
+
+    let startDate: Date | undefined;
+    let endDate: Date | undefined = now;
+
+    switch (period) {
+        case "week":
+            startDate = new Date();
+            startDate.setDate(now.getDate() - 7);
+            break;
+        case "month":
+            startDate = new Date(now);
+            startDate.setMonth(now.getMonth() - 1);
+            break;
+
+        case "year":
+            startDate = new Date(now);
+            startDate.setFullYear(now.getFullYear() - 1);
+            break;
+
+        case "all":
+            startDate = undefined;
+            endDate = undefined;
+            break;
+    }
+
+    if (from && to) {
+        startDate = new Date(from);
+        endDate = new Date(to);
+    }
+
+    const dateFilter =
+        startDate && endDate
+            ? Prisma.sql`AND t.date BETWEEN ${startDate} AND ${endDate}`
+            : Prisma.empty;
+
+    const summary = await prisma.$queryRaw<
+        {
+            expense: Prisma.Decimal;
+            income: Prisma.Decimal;
+            transactionCount: bigint;
+        }[]
+    >`
+    SELECT
+      COALESCE(SUM(CASE WHEN t.type='EXPENSE' THEN t.amount END),0) AS expense,
+      COALESCE(SUM(CASE WHEN t.type='INCOME' THEN t.amount END),0) AS income,
+      COUNT(*) AS "transactionCount"
+    FROM "Transaction" t
+    WHERE t."accountId"=${accountId}
+    ${dateFilter};
+  `;
+
+    const expenseBreakdown = await prisma.$queryRaw<
+        {
+            categoryId: string;
+            category: string;
+            icon: string | null;
+            amount: Prisma.Decimal;
+        }[]
+    >`
+    SELECT
+      c.id as "categoryId",
+      c.name as category,
+      c.icon,
+      SUM(t.amount) as amount
+    FROM "Transaction" t
+    JOIN "TransactionCategory" c
+      ON c.id=t."categoryId"
+    WHERE
+      t."accountId"=${accountId}
+      AND t.type='EXPENSE'
+      ${dateFilter}
+    GROUP BY c.id,c.name,c.icon
+    ORDER BY amount DESC;
+  `;
+
+    const incomeBreakdown = await prisma.$queryRaw<
+        {
+            categoryId: string;
+            category: string;
+            icon: string | null;
+            amount: Prisma.Decimal;
+        }[]
+    >`
+    SELECT
+      c.id as "categoryId",
+      c.name as category,
+      c.icon,
+      SUM(t.amount) as amount
+    FROM "Transaction" t
+    JOIN "TransactionCategory" c
+      ON c.id=t."categoryId"
+    WHERE
+      t."accountId"=${accountId}
+      AND t.type='INCOME'
+      ${dateFilter}
+    GROUP BY c.id,c.name,c.icon
+    ORDER BY amount DESC;
+  `;
+
+    const totalExpense = Number(summary[0].expense);
+    const totalIncome = Number(summary[0].income);
 
     return {
-        transactions,
-        pagination: {
-            page,
-            limit,
-            total,
-            totalPages: Math.ceil(total / limit),
-            hasNextPage: page * limit < total,
+        account,
+
+        summary: {
+            expense: totalExpense,
+            income: totalIncome,
+            transactionCount: Number(summary[0].transactionCount),
         },
+
+        expenseBreakdown: expenseBreakdown.map((x) => ({
+            ...x,
+            amount: Number(x.amount),
+            percentage:
+                totalExpense === 0
+                    ? 0
+                    : Number(((Number(x.amount) / totalExpense) * 100).toFixed(1)),
+        })),
+
+        incomeBreakdown: incomeBreakdown.map((x) => ({
+            ...x,
+            amount: Number(x.amount),
+            percentage:
+                totalIncome === 0
+                    ? 0
+                    : Number(((Number(x.amount) / totalIncome) * 100).toFixed(1)),
+        })),
     };
-};
+
+
+}

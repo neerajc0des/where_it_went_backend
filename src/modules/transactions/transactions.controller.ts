@@ -1,4 +1,5 @@
 import { Request, Response } from 'express';
+import { ZodError } from 'zod';
 import {
   createTransactionService,
   updateTransactionService,
@@ -6,11 +7,12 @@ import {
   getAllTransactionService,
   getTransactionByIdService,
 } from './transactions.service';
+import { transactionFiltersQuerySchema } from './transactions.schema';
 
 export const createTransactionController = async (req: Request, res: Response) => {
   try {
     const transaction = await createTransactionService(req.body, req.userId);
-    
+
     return res.status(201).json({
       success: true,
       message: 'Transaction created successfully',
@@ -34,7 +36,10 @@ export const updateTransactionController = async (req: Request, res: Response) =
       data: transaction,
     });
   } catch (error: any) {
-    return res.status(400).json({ success: false, message: error.message });
+    const notFound = error.message === 'Transaction not found';
+    return res
+      .status(notFound ? 404 : 400)
+      .json({ success: false, message: error.message });
   }
 };
 
@@ -44,21 +49,29 @@ export const deleteTransactionController = async (req: Request, res: Response) =
       req.params.id as string,
       req.userId
     );
-    return res.status(200).json({ success: true, data: result });
+
+    return res.status(200).json({ success: true, message: result.message, data: result });
   } catch (error: any) {
-    return res.status(400).json({ success: false, message: error.message });
+    const notFound = error.message === 'Transaction not found';
+    return res
+      .status(notFound ? 404 : 400)
+      .json({ success: false, message: error.message });
   }
 };
 
 export const getAllTransactionsController = async (req: Request, res: Response) => {
   try {
-    const page = parseInt(req.query.page as string) || 1;
-    const limit = parseInt(req.query.limit as string) || 20;
-    const accountId = req.query.accountId as string | undefined;
+    // parsed here rather than through validate() — that middleware only writes the
+    // parsed `body` back onto the request, so coerced query params would be lost
+    const filters = transactionFiltersQuerySchema.parse(req.query);
 
-    const result = await getAllTransactionService(req.userId, accountId, page, limit);
+    const result = await getAllTransactionService(req.userId, filters);
     return res.status(200).json({ success: true, data: result });
   } catch (error: any) {
+    if (error instanceof ZodError) {
+      return res.status(400).json({ success: false, errors: error.issues });
+    }
+
     return res.status(400).json({ success: false, message: error.message });
   }
 };

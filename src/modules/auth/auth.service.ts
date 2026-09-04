@@ -242,14 +242,12 @@ export const refreshTokenService = async (token:string) =>{
     }
 }
 
-
 export const logoutService = async (refreshToken: string) => {
   await prisma.session.updateMany({
     where: { refreshToken },
     data: { isRevoked: true }
   });
 };
-
 
 export const verifyEmailService = async (token: string) => {
     const verificationRecord = await prisma.verificationToken.findUnique({
