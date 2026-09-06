@@ -1,6 +1,6 @@
 import { Request, Response } from "express";
 import { ZodError } from "zod";
-import { createAccountService, deleteAccountService, getAccountAnalyticsService, getAccountByIdService,  getAccountsService, getAccountTransactionsService, restoreAccountService, updateAccountService } from "./accounts.service";
+import { setPrimaryAccountService, createAccountService, deleteAccountService, getAccountAnalyticsService, getAccountByIdService,  getAccountsService, getAccountTransactionsService, restoreAccountService, updateAccountService } from "./accounts.service";
 import { transactionFiltersQuerySchema } from "../transactions/transactions.schema";
 
 
@@ -39,6 +39,20 @@ export const deleteAccountController = async (req:Request, res: Response)=>{
 //         return res.status(400).json({success: false, message: error.message});
 //     }
 // }
+
+export const setPrimaryAccountController = async (req: Request, res: Response) => {
+    try {
+        const account = await setPrimaryAccountService(req.params.id as string, req.userId);
+        return res.status(200).json({
+            success: true,
+            message: "Primary account updated",
+            data: account,
+        });
+    } catch (error: any) {
+        const notFound = error.message === 'Account not found';
+        return res.status(notFound ? 404 : 400).json({ success: false, message: error.message });
+    }
+}
 
 export const restoreAccountController = async (req: Request, res:Response)=>{
     try {

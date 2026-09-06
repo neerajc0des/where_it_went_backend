@@ -2,6 +2,8 @@ import 'dotenv/config';
 import { GoogleGenAI, Type } from "@google/genai";
 import prisma from '../../config/db';
 import { SmartEntryInput } from './ai.schema';
+import { getPrimaryAccount } from '../accounts/accounts.service';
+import { TransactionType } from '@prisma/client';
 
 const ai = new GoogleGenAI({apiKey: process.env.GEMINI_API_KEY});
 
@@ -16,8 +18,11 @@ RULES:
 1. Amount: Extract the numeric value. If no amount mentioned, set to 0.
 2. Merchant: Clean name of store/vendor/app. Use "Unknown" if unclear.
 3. CategoryId: Pick the EXACT ID from the list below that best fits.
-4. AccountId: Pick the EXACT ID based on payment method clues (gpay/online → bank, cash → cash).
-   If no payment method mentioned → use default account ID: "${defaultAccountId}"
+   If genuinely NOTHING fits, return an empty string "" rather than forcing a wrong category.
+4. AccountId + accountMentioned: Set accountMentioned to true ONLY when the text names an
+   account or a clear payment method (e.g. "from HDFC", "paid by cash", "on GPay"). In that
+   case pick the EXACT matching ID. If the text says nothing about how it was paid, set
+   accountMentioned to false and use the primary account ID: "${defaultAccountId}".
 5. Type: If category type is INCOME → set "INCOME". Otherwise → "EXPENSE".
 6. Note: Short, friendly description (e.g. "Midnight snack craving", "Monthly salary").
 7. isImpulse: true only if clearly unplanned/spontaneous (late night snacks, random shopping).
@@ -50,6 +55,10 @@ const getResponseSchema = () => ({
             type: Type.STRING,
             description: "The exact ID of the matched payment account from the provided list."
         },
+        accountMentioned: {
+            type: Type.BOOLEAN,
+            description: "True only if the text explicitly names an account or payment method. False when the user said nothing about how it was paid."
+        },
         type: {
             type: Type.STRING,
             enum: ["EXPENSE", "INCOME"],
@@ -63,7 +72,7 @@ const getResponseSchema = () => ({
             description: "Set to true if the context strongly implies a sudden, non-essential splurge or unplanned shopping (e.g., junk food, gaming, impulse buying). Otherwise set to false." 
         }
     },
-    required: ["amount", "merchant", "categoryId", "accountId", "type", "note", "isImpulse"],
+    required: ["amount", "merchant", "categoryId", "accountId", "accountMentioned", "type", "note", "isImpulse"],
 });
 
 export const smartEntryService = async (
@@ -100,7 +109,12 @@ export const smartEntryService = async (
 
     if(accounts.length===0) throw new Error('User has no accounts set up.');
 
-    const defaultAcc = accounts.find(acc=> acc.name.toLowerCase()==='wallet') || accounts[0];
+    // the user's chosen primary is the default when the text names no account
+    const primaryAccount = await getPrimaryAccount(userId);
+    const defaultAcc =
+        accounts.find(acc => acc.id === primaryAccount?.id)
+        || accounts.find(acc => acc.name.toLowerCase() === 'wallet')
+        || accounts[0];
     const formattedAcc = accounts.map((acc:any)=>{
         return `- ACCOUNT_ID: "${acc.id}" | ACCOUNT_NAME: "${acc.name}"`;
     }).join("\n");
@@ -134,12 +148,30 @@ export const smartEntryService = async (
         throw new Error('Could not extract amount. Please specify a price.');
     }
 
-    // validate AI returned valid IDs
-    const validCategory = categories.find((c:any) => c.id === parsedData.categoryId);
-    if (!validCategory) throw new Error('AI returned invalid category');
+    // The model can return an unusable category (empty, hallucinated, or the wrong
+    // direction). Rather than failing the whole entry, fall back to Miscellaneous.
+    const matchedCategory = categories.find((c: any) => c.id === parsedData.categoryId);
+    const txType: TransactionType =
+        parsedData.type === 'INCOME' ? TransactionType.INCOME : TransactionType.EXPENSE;
 
-    const validAccount = accounts.find((a:any) => a.id === parsedData.accountId);
-    if (!validAccount) throw new Error('AI returned invalid account');
+    const category =
+        matchedCategory && matchedCategory.type === txType
+            ? matchedCategory
+            : await ensureMiscellaneousCategory(userId, txType);
+
+    parsedData.categoryId = category.id;
+    parsedData.category = category.name;
+
+    // The model happily picks an arbitrary account even when the text names none, so
+    // trust its own accountMentioned flag rather than the id it chose. Anything not
+    // explicitly mentioned — or not a real account — lands on the primary.
+    const validAccount = accounts.find((a: any) => a.id === parsedData.accountId);
+
+    if (!validAccount || parsedData.accountMentioned !== true) {
+        parsedData.accountId = defaultAcc.id;
+    }
+
+    parsedData.account = accounts.find((a: any) => a.id === parsedData.accountId)?.name;
 
     const date = new Date();
     const transaction = await prisma.transaction.create({
@@ -171,6 +203,35 @@ export const smartEntryService = async (
         aiExtracted: parsedData
     };
 }
+
+/**
+ * Categories are unique on (name, userId), so a user can hold only one row called
+ * "Miscellaneous". When both directions need a fallback the income one is suffixed
+ * rather than colliding.
+ */
+const ensureMiscellaneousCategory = async (userId: string, type: TransactionType) => {
+    const name = type === TransactionType.INCOME ? 'Miscellaneous Income' : 'Miscellaneous';
+
+    const existing = await prisma.transactionCategory.findFirst({
+        where: {
+            type,
+            name,
+            OR: [{ userId: null }, { userId }],
+        },
+    });
+
+    if (existing) return existing;
+
+    return prisma.transactionCategory.create({
+        data: {
+            name,
+            type,
+            icon: 'tag',
+            isDefault: false,
+            userId,
+        },
+    });
+};
 
 const generateWithRetry = async (contents: string, config: any, retries = 3) => {
   for (let i = 0; i < retries; i++) {

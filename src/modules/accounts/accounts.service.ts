@@ -17,6 +17,12 @@ export const createAccountService = async (
         throw new Error("The name 'Wallet' is reserved by the system.")
     }
 
+    // the very first account a user creates becomes their primary, so transaction
+    // entry always has a sensible default without them choosing one
+    const existingCount = await prisma.account.count({
+        where: { userId, isDeleted: false }
+    });
+
     const account = await prisma.account.create({
         data: {
             name,
@@ -24,7 +30,8 @@ export const createAccountService = async (
             balance,
             openingBalance: balance,
             monthlyBudget,
-            userId
+            userId,
+            isPrimary: existingCount === 0,
         },
         omit: { userId: true }
     })
@@ -86,9 +93,26 @@ export const deleteAccountService = async (
     await prisma.account.update({
         where: { id: accountId },
         data: {
-            isDeleted: true
+            isDeleted: true,
+            isPrimary: false,
         }
     })
+
+    // never leave the user without a primary — promote their next most recent account
+    if (account.isPrimary) {
+        const successor = await prisma.account.findFirst({
+            where: { userId, isDeleted: false },
+            orderBy: { createdAt: 'desc' },
+            select: { id: true },
+        });
+
+        if (successor) {
+            await prisma.account.update({
+                where: { id: successor.id },
+                data: { isPrimary: true },
+            });
+        }
+    }
 
     return {
         message: 'Account archived successfully'
@@ -142,6 +166,43 @@ export const restoreAccountService = async (
 
     return { message: 'Account restored successfully' };
 }
+
+/** Exactly one account per user carries isPrimary, so this swaps rather than sets. */
+export const setPrimaryAccountService = async (accountId: string, userId: string) => {
+    const account = await prisma.account.findFirst({
+        where: { id: accountId, userId, isDeleted: false },
+    });
+
+    if (!account) throw new Error('Account not found');
+
+    const [, updated] = await prisma.$transaction([
+        prisma.account.updateMany({
+            where: { userId, isPrimary: true },
+            data: { isPrimary: false },
+        }),
+        prisma.account.update({
+            where: { id: accountId },
+            data: { isPrimary: true },
+            omit: { userId: true },
+        }),
+    ]);
+
+    return updated;
+};
+
+/** The account transaction entry defaults to. Falls back so callers always get one. */
+export const getPrimaryAccount = async (userId: string) => {
+    const primary = await prisma.account.findFirst({
+        where: { userId, isDeleted: false, isPrimary: true },
+    });
+
+    if (primary) return primary;
+
+    return prisma.account.findFirst({
+        where: { userId, isDeleted: false },
+        orderBy: { createdAt: 'asc' },
+    });
+};
 
 export const getAccountsService = async (userId: string) => {
     const accounts = await prisma.account.findMany({
